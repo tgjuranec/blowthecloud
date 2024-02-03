@@ -2,7 +2,6 @@ package com.conform.blowcloud;
 
 import android.os.Environment;
 import android.os.StatFs;
-import java.nio.file.Path;
 
 import java.io.File;
 
@@ -13,7 +12,7 @@ public class StorageList {
 
     public long dataTotal = 0 , dataAvailable = 0;
     public long emulatedTotal = 0, emulatedAvailable = 0;
-    public long storageTotal = 0,   storageAvailable = 0;
+    public long removableTotal = 0,   removableAvailable = 0;
     String storageReport;
     public StorageList(String removablePath){
         File path = Environment.getDataDirectory();
@@ -30,14 +29,11 @@ public class StorageList {
         // If the external storage is physical, we need to use the external storage directory.
         StatFs storageStat = new StatFs(removablePath);
         long storageBS = storageStat.getBlockSizeLong();
-        storageTotal = storageBS * storageStat.getBlockCountLong();
-        storageAvailable = storageBS * storageStat.getAvailableBlocksLong();
+        removableTotal = storageBS * storageStat.getBlockCountLong();
+        removableAvailable = storageBS * storageStat.getAvailableBlocksLong();
 
         storageReport =
                         "Emulated occupied Space: " + ((emulatedTotal-emulatedAvailable)/1000000) + "MB\n"  +
-                        "Removable Space: " + storageAvailable/1000000 + "MB";
-
-
+                        "Removable Space: " + removableAvailable /1000000 + "MB";
     }
-
 }

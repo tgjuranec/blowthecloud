@@ -16,48 +16,29 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 public class Execution {
     static Context context;
 
-    Execution(Context c){
+    Execution(Context c) {
         context = c;
     }
 
 
-    public boolean copyFile(String source, String destination){
-        try {
-            FileInputStream fis = new FileInputStream(source);
-            FileOutputStream fos = new FileOutputStream(destination);
-
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = fis.read(buffer)) > 0) {
-                fos.write(buffer, 0, length);
-            }
-
-            fis.close();
-            fos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }finally {
-        }
-        return true;
-    }
-
-    public void BackupAll(String dir){
+    public void BackupAll(String dir) {
         Uri fileUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
         /*
         String selection = MediaStore.Images.Media.BUCKET_DISPLAY_NAME + "=?";
 
         String[] selectionArgs = new String[]{"DCIM/Camera"};
         */
-        String [] projection = {MediaStore.Images.Media._ID, MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.Images.Media.DISPLAY_NAME};
+        String[] projection = {MediaStore.Images.Media._ID, MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.Images.Media.DISPLAY_NAME};
         Cursor cursor = context.getContentResolver().query(fileUri, projection, null, null, null);
         if (cursor != null && cursor.moveToFirst()) {
-            while(cursor.moveToNext()) {
+            while (cursor.moveToNext()) {
                 int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
                 long id = cursor.getLong(idColumn);
                 String filename = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME));
@@ -73,27 +54,49 @@ public class Execution {
     How to get an Uri
     Uri fileUri = Uri.parse("android.resource://your.package.name/" + R.drawable.your_image);
      */
-    public void copyFile(Uri fileUri, String filename){
+    public void copyFile(Uri sourceFileUri, String targetRoot){
         InputStream in = null;
         OutputStream out = null;
+        String sourceFile = sourceFileUri.getPath();
+        String targetFile = sourceFile.replace("/storage/emulated/0", targetRoot);
+        File fTargetFile = new File(targetFile);
+        // SKIP IF FILE ALREADY EXISTS!!!
+        if(fTargetFile.exists()){
+            return;
+        }
+        File targetAbsDir = new File(UtilFunc.getAbsoluteDir(targetFile));
+        if(!targetAbsDir.exists()){
+            targetAbsDir.mkdirs();
+        }
+
+        Path sourcePath = Paths.get(sourceFile);
+        Path targetPath = Paths.get(targetFile);
+
         try {
-            in = context.getContentResolver().openInputStream(fileUri);
-            File outFile = new File(Environment.getExternalStorageDirectory(), filename);
-            out = new FileOutputStream(outFile);
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = in.read(buffer)) > 0){
-                out.write(buffer, 0, length);
-            }
-            in.close();
-            out.flush();
-            out.close();
+            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            Log.e("tag", "Failed to copy file", e);
+            throw new RuntimeException(e);
         }
     }
 
-    private void fromStoreToUri(){
+    public void copyFile(String sourceFile, String targetRoot) {
+        InputStream in = null;
+        OutputStream out = null;
+        String targetFile = sourceFile.replace("/storage/emulated/0", targetRoot);
+        File targetAbsDir = new File(UtilFunc.getAbsoluteDir(targetFile));
+        if(!targetAbsDir.exists()){
+            targetAbsDir.mkdirs();
+        }
+        Path sourcePath = Paths.get(sourceFile);
+        Path targetPath = Paths.get(targetFile);
+        try {
+            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void fromStoreToUri() {
         // Define a projection that specifies which columns from the database you will use after this query.
         String[] projection = new String[]{
                 MediaStore.Images.Media._ID,
@@ -127,61 +130,6 @@ public class Execution {
                 // Now you can use the contentUri as needed
             }
         } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    void copyUsingMediaStore(Uri sourceFile){
-        String targetDisplayName = UtilFunc.getFilename(sourceFile.getPath());
-        String relativePathName = UtilFunc.getRelativeDir(sourceFile.getPath());
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.MediaColumns.DISPLAY_NAME, targetDisplayName);
-        //values.put(MediaStore.MediaColumns.MIME_TYPE, "text/plain");
-        values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePathName);
-
-        Uri uri = context.getContentResolver().insert(MediaStore.Files.getContentUri("external"), values);
-
-        try {
-            InputStream in = context.getContentResolver().openInputStream(sourceFile);
-            OutputStream outputStream = context.getContentResolver().openOutputStream(uri);
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = in.read(buffer)) > 0){
-                outputStream.write(buffer, 0, length);
-            }
-            in.close();
-            outputStream.flush();
-            outputStream.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-    }
-    void copyUsingMediaStore(String sourceFile){
-        String targetDisplayName = UtilFunc.getFilename(sourceFile);
-        String relativePathName = UtilFunc.getRelativeDir(sourceFile);
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.MediaColumns.DISPLAY_NAME, targetDisplayName);
-        //values.put(MediaStore.MediaColumns.MIME_TYPE, "text/plain");
-        values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePathName);
-
-        Uri uri = context.getContentResolver().insert(MediaStore.Files.getContentUri("external"), values);
-
-        try {
-            InputStream in = Files.newInputStream(Paths.get(sourceFile));
-            OutputStream outputStream = context.getContentResolver().openOutputStream(uri);
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = in.read(buffer)) > 0){
-                outputStream.write(buffer, 0, length);
-            }
-            in.close();
-            outputStream.flush();
-            outputStream.close();
-
-        } catch (IOException e) {
             e.printStackTrace();
         }
 

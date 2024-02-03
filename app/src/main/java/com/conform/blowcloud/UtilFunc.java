@@ -1,5 +1,10 @@
 package com.conform.blowcloud;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Path;
 
 public class UtilFunc {
@@ -8,6 +13,12 @@ public class UtilFunc {
         int pos = fullPath.lastIndexOf('/');
         String filename = fullPath.substring(pos+1);
         return filename;
+    }
+
+    static public String getAbsoluteDir(String fullPath){
+        int pos = fullPath.lastIndexOf('/');
+        String absolutPath = fullPath.substring(0,pos);
+        return absolutPath;
     }
 
     static public String getFilename(Path fullPath){
@@ -80,5 +91,48 @@ public class UtilFunc {
 
         return finalOutput;
     }
+
+    /*
+    imported from phind.com https://www.phind.com/search?cache=t38qnormvtxxdedangk5zxdj
+     */
+    static public String getSDCardPath() {
+        File[] rv = null;
+        // Check both possible paths
+        rv = new File("/mnt/").listFiles(new FileFilter() {
+            public boolean accept(File pathname) {
+                return pathname.getName().startsWith("sdcard") && pathname.isDirectory();
+            }
+        });
+        if (rv == null || rv.length == 0) {
+            rv = new File("/storage/").listFiles(new FileFilter() {
+                public boolean accept(File pathname) {
+                    return pathname.getName().startsWith("sdcard") && pathname.isDirectory();
+                }
+            });
+        }
+        if (rv != null && rv.length > 0) {
+            return rv[0].getAbsolutePath();
+        } else {
+            return null;
+        }
+    }
+
+    static public String run(String command){
+        String output = "";
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            int read;
+            char[] buffer = new char[4096];
+            while ((read = reader.read(buffer)) > 0) {
+                output += new String(buffer, 0, read);
+            }
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return output;
+    }
+
 
 }
