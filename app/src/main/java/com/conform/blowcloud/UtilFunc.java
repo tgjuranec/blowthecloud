@@ -25,6 +25,10 @@ public class UtilFunc {
         return getFilename(fullPath.toString());
     }
 
+    /*
+    Function returns 'volume root' - directory where drive is mounted from full path
+    e.g. /storage/0652-H45/DCIM/Camera/IMG_lklk.jpg -> /storage/0652-H45
+     */
     static public String getVolumeRoot(String fullPath){
         // return value must be e.g. '/storage/E320-2540'
         // '/storage/' is fixed so we must find string after it: 'E320-2540'
@@ -36,6 +40,9 @@ public class UtilFunc {
            return null;
         }
         String VolumeName = fullPath.substring(posVolumeNamestart, posVolumeNameend);
+        if(VolumeName.contains("emulated")){
+            return emulatedRoot;
+        }
         return storageDir + VolumeName;
     }
 
@@ -132,6 +139,25 @@ public class UtilFunc {
             e.printStackTrace();
         }
         return output;
+    }
+
+    static public String IncrementFileName(String fullpath){
+        String incFullPath;
+        int posPeriod = fullpath.lastIndexOf(".");
+        if(Character.isDigit(fullpath.charAt(posPeriod-1))){
+            if(fullpath.charAt(posPeriod-1)==9){
+                incFullPath = fullpath.substring(0,posPeriod-1) + "10" + fullpath.substring(posPeriod);
+            }
+            else{
+                int d = fullpath.charAt(posPeriod-1)+1;
+                incFullPath = fullpath.substring(0,posPeriod) + Integer.toString(d) + fullpath.substring(posPeriod);
+
+            }
+        }
+        else{
+            incFullPath = fullpath.substring(0,posPeriod) + "0" + fullpath.substring(posPeriod);
+        }
+        return incFullPath;
     }
 
 

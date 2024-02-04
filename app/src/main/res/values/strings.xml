@@ -4,6 +4,7 @@
     <string name="strCollectingData">Collecting data...</string>
     <string name="strNotEnoughSpace">Backup cannot be performed, there is not enough space on removable media.</string>
     <string name="strCopyingStarted">Backup started. Please wait until finished.</string>
+    <string name="strCopyingStatus">Backup is started. Number of already backup files: </string>
     <string name="strCopyingFinished">Backup is finished. Thank you for your patience.</string>
 
 </resources>

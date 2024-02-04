@@ -17,8 +17,9 @@ public class DocsManager {
     Thread calculate;
     final String TAG = "BlowCloud - DocsManager";
     int doubleCount = 0;
-    static int count = 0;
+    static int fileCount = 0;
     public long TotalFileSize = 0;
+    String rootDir = null;
 
     public DocsManager(){
         fileList = new HashMap<String,Long>();
@@ -27,15 +28,15 @@ public class DocsManager {
     public void addfile(String pathFile){
         File f = new File(pathFile);
         if(f.exists() && f.isFile()) {
-            count++;
+            fileCount++;
             if (fileList.put(pathFile, f.length()) != null) {
                 doubleCount += 1;
             }
             else{
                 TotalFileSize += f.length();
             }
-            if(count % 1000 == 0){
-                Log.d(TAG, "addfile(), count: " + count);
+            if(fileCount % 1000 == 0){
+                Log.d(TAG, "addfile(), count: " + fileCount);
             }
         }
     }

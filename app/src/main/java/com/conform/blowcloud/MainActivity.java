@@ -17,7 +17,8 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.File;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -25,14 +26,15 @@ public class MainActivity extends AppCompatActivity {
     File emulated_dir, storage_dir, external_files_dirv30;
     TextView tvStoragelFiles, tvEmulatedFiles, tvStatus;
     Button btStart;
-    DocsManager dmEmulated, dmStorage, dmStorageOTG;
+    DocsManager dmEmulated, dmStorage, dmStorage2;
     File [] storageFiles;
     File [] emulatedFiles;
     StorageList sl;
     Execution exe;
-    String removableRoot;
+    String removableRoot;  //determines destination's root directory
     String [] commandOutput;
-    String [] mountedRoots;
+    String [] mountedRemovables; // list of destination's root candidates (user selects if N>1)
+    long filesToBackupSize = 0;
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,17 +50,15 @@ public class MainActivity extends AppCompatActivity {
 
         tvStatus.setText(R.string.strCollectingData);
 
-        dmEmulated = new DocsManager();
-        dmStorage = new DocsManager();
-        dmStorageOTG = new DocsManager();
-        mountedRoots = new String[3];
+
+        mountedRemovables = new String[3];
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // find all mounted drives (except emulated)
             commandOutput = UtilFunc.run("df").split("\\r?\\n");
             int i = 0;
             for (String str : commandOutput){
-                if(str.indexOf("/dev/fuse") != -1 && str.indexOf("/storage/emulated") == -1){
-                    mountedRoots[i] = str.substring(str.lastIndexOf(" ")+1);
+                if(str.contains("/dev/fuse") && !str.contains("/storage/emulated")){
+                    mountedRemovables[i] = str.substring(str.lastIndexOf(" ")+1);
                     i++;
                 }
             }
@@ -68,6 +68,21 @@ public class MainActivity extends AppCompatActivity {
         else{
             emulated_dir = Environment.getExternalStorageDirectory();
         }
+        dmEmulated = new DocsManager();
+        dmStorage = new DocsManager();
+        dmStorage2 = new DocsManager();
+        dmEmulated.rootDir = emulated_dir.getPath();
+        if(mountedRemovables[0] == null){
+            // NO OTHER DRIVE MOUNTED
+        }
+        else if (mountedRemovables[0]!= null){
+            removableRoot = mountedRemovables[0];
+            dmStorage.rootDir = removableRoot;
+        }
+        else if (mountedRemovables[1] != null){
+            dmStorage2.rootDir = mountedRemovables[1];
+        }
+
 
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -85,8 +100,14 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        sl = new StorageList(removableRoot);
-                        tvStatus.setText(sl.storageReport);
+                        // Collecting data finished -> analyze data
+                        String statusreport = AnalyzeAndReport();
+                        sl = new StorageList(mountedRemovables);
+                        tvEmulatedFiles.setText(sl.emulatedReport);
+                        tvEmulatedFiles.append("Total file size: "+ dmEmulated.TotalFileSize / 1000000 + "MB\n");
+                        tvEmulatedFiles.append("Backup file size: " + filesToBackupSize / 1000000 + "MB\n");
+                        tvStoragelFiles.setText(sl.removableReport);
+                        tvStatus.setText(statusreport);
                     }
                 });
             }
@@ -97,6 +118,16 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         tvStatus.setText(R.string.strCopyingFinished);
+
+                    }
+                });
+            }
+
+            public void onUpdateUI(int count){
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvStatus.setText("Files copied: " + count);
 
                     }
                 });
@@ -115,12 +146,11 @@ public class MainActivity extends AppCompatActivity {
                 long offset = 10000000;
                 if((requestedFileSize + offset) >= availableSpace) {
                     // THERE IS NOT ENOUGH SPACE - BACKUP STOPPED
-                    tvStatus.setText(R.string.strNotEnoughSpace + "\n" +
-                            sl.storageReport + "\nTotal file size [MB]: " + dmEmulated.TotalFileSize / 1000000);
+                    tvStatus.setText(R.string.strNotEnoughSpace );
                 }
                 else{
                     // THERE IS ENOUGH SPACE - BACKUP MAY START
-                    tvStatus.setText(R.string.strCopyingStarted + "\n" + sl.storageReport + "\nTotal file size [MB]: " + dmEmulated.TotalFileSize / 1000000);
+                    tvStatus.setText(R.string.strCopyingStarted);
                     runner.copyFiles();
                 }
             }
@@ -136,15 +166,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted
-                } else {
-                    // permission denied
-                }
-                return;
+        if (requestCode == MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE) {// If request is cancelled, the result arrays are empty.
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // permission was granted
+            } else {
+                // permission denied
             }
             // other 'case' lines to check for other permissions this app might request
         }
@@ -152,12 +178,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void startCopy(){
-        int i = 0;
-        for (String f : dmEmulated.fileList.keySet()) {
-            i++;
-            exe.copyFile(f, removableRoot);
-            if (i >= 10000) return;
-        }
+
     }
 
     private void getFilesFromMediaStore(Uri Mediastore_select){
@@ -190,9 +211,14 @@ public class MainActivity extends AppCompatActivity {
                 if(d.contains(emulated_dir.toString())){
                     dmEmulated.addfile(d);
                 }
-                else{
+                else if (dmStorage.rootDir != null && d.contains(dmStorage.rootDir)){
                     dmStorage.addfile(d);
-
+                }
+                else if(dmStorage2.rootDir != null && d.contains(dmStorage2.rootDir)){
+                    dmStorage2.addfile(d);
+                }
+                else{
+                    //ERROR
                 }
             }
         }
@@ -227,13 +253,14 @@ public class MainActivity extends AppCompatActivity {
     public interface ThreadCallback {
         void onGetMediastoreDataFinished();
         void onCopyFilesFinished();
+        void onUpdateUI(int count);
     }
 
     public interface ThreadCallbackCF{
 
     }
     public class ThreadRunner {
-        private ThreadCallback callback;
+        private final ThreadCallback callback;
 
         public ThreadRunner(ThreadCallback callback) {
             this.callback = callback;
@@ -243,9 +270,6 @@ public class MainActivity extends AppCompatActivity {
             new Thread(() -> {
                 // Perform your thread operations here
                 getFilesFromMediaStore(MediaStore.Files.getContentUri("external"));
-                Map.Entry<String,Long> entry = dmStorage.fileList.entrySet().iterator().next(); //only to get '/storage/E230-3541'
-                //TODO: IF dmStorage.size() == 0 -> code breaks, find another way to get VolumeRoot
-                removableRoot = UtilFunc.getVolumeRoot(entry.getKey());
                 // Once the thread is done, call the callback
                 callback.onGetMediastoreDataFinished();
             }).start();
@@ -254,11 +278,51 @@ public class MainActivity extends AppCompatActivity {
         public void copyFiles(){
             new Thread(() -> {
                 // Thread for copy files
-                startCopy();
+                int i = 0;
+                for (String f : dmEmulated.fileList.keySet()) {
+                    i++;
+                    exe.copyFile(f, UtilFunc.getVolumeRoot(f),removableRoot);
+                    if(i%20 == 0) {
+                        callback.onUpdateUI(i);
+                    }
+                    if (i >= 10000) return;
+                }
                 callback.onCopyFilesFinished();
 
             }).start();
         }
     }
 
+    private String AnalyzeAndReport(){
+        List<String> fBackup = FilesToBackup(dmEmulated, dmStorage);
+        String report = "Files to bacckup: " + fBackup.size() + "\n" +
+                "File Size: " + filesToBackupSize / 1000000 + " MB\n";
+        return report;
+    }
+
+    private List<String> FilesToBackup(DocsManager source, DocsManager target){
+        List<String> filesToBackup = new ArrayList<>();
+        for (String str : source.fileList.keySet()){
+            // convert path from emulated to the same path on the removable
+            String targetKey = target.rootDir + "/" + UtilFunc.getRelativePath(str);
+            // TEST IF FILE FROM EMULATED ALREADY EXISTS ON REMOVABLE
+            if(target.fileList.containsKey(targetKey)){
+                // FILE WITH THE SAME NAME EXISTS, CHECK IF FILES' CONTENT IS IDENTICAL
+                if(source.fileList.get(str) == target.fileList.get(targetKey)){
+                    //FILE CONTENT IS IDENTICAL - SKIP COPYING
+                    // TODO: CHECK HASH VALUE OF BOTH FILES
+                }
+                else{
+                    // FILE NAMES ARE THE SAME, BUT FILES ARE DIFFERENT - SET ANOTHER NAME
+                    //
+                }
+            }
+            else {
+                // EVERYTHING IS OK
+                filesToBackup.add(str);
+                filesToBackupSize += source.fileList.get(str);
+            }
+        }
+        return filesToBackup;
+    }
 }

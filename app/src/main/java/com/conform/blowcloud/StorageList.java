@@ -12,9 +12,13 @@ public class StorageList {
 
     public long dataTotal = 0 , dataAvailable = 0;
     public long emulatedTotal = 0, emulatedAvailable = 0;
-    public long removableTotal = 0,   removableAvailable = 0;
-    String storageReport;
-    public StorageList(String removablePath){
+    public long [] removableTotal,   removableAvailable;
+    public String emulatedReport;
+    public String removableReport = "";
+    public StorageList(String [] removablePath){
+        removableTotal = new long[removablePath.length];
+        removableAvailable = new long[removablePath.length];
+
         File path = Environment.getDataDirectory();
         StatFs stat = new StatFs(path.getPath());
         long blockSize = stat.getBlockSizeLong();
@@ -26,14 +30,14 @@ public class StorageList {
         long emulatedBS = emulatedStat.getBlockSizeLong();
         emulatedTotal = emulatedBS * emulatedStat.getBlockCountLong();
         emulatedAvailable = emulatedBS * emulatedStat.getAvailableBlocksLong();
+        emulatedReport = "/storage/emulated/0: " + ((emulatedTotal-emulatedAvailable)/1000000) + "MB\n";
         // If the external storage is physical, we need to use the external storage directory.
-        StatFs storageStat = new StatFs(removablePath);
-        long storageBS = storageStat.getBlockSizeLong();
-        removableTotal = storageBS * storageStat.getBlockCountLong();
-        removableAvailable = storageBS * storageStat.getAvailableBlocksLong();
-
-        storageReport =
-                        "Emulated occupied Space: " + ((emulatedTotal-emulatedAvailable)/1000000) + "MB\n"  +
-                        "Removable Space: " + removableAvailable /1000000 + "MB";
+        for (int i = 0; i < removablePath.length && removablePath[i] != null; i++){
+            StatFs storageStat = new StatFs(removablePath[i]);
+            long storageBS = storageStat.getBlockSizeLong();
+            removableTotal[i] = storageBS * storageStat.getBlockCountLong();
+            removableAvailable[i] = storageBS * storageStat.getAvailableBlocksLong();
+            removableReport += removablePath[i] + " Available: " + removableAvailable[i] /1000000 + "MB";
+        }
     }
 }
