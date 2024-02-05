@@ -92,7 +92,7 @@ public class Execution {
                 return false;
             }
             else {
-                UtilFunc.IncrementFileName(targetFile);
+                targetFile = UtilFunc.IncrementFileName(targetFile);
             }
         }
         File targetAbsDir = new File(UtilFunc.getAbsoluteDir(targetFile));

@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     String [] commandOutput;
     String [] mountedRemovables; // list of destination's root candidates (user selects if N>1)
     long filesToBackupSize = 0;
+    List<String> fBackup;
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,10 +103,15 @@ public class MainActivity extends AppCompatActivity {
                     public void run() {
                         // Collecting data finished -> analyze data
                         String statusreport = AnalyzeAndReport();
+                        String filesToBackup = "";
+                        for (int i = 0; i < 10 && i < fBackup.size(); i++){
+                            filesToBackup += (fBackup.get(i) + "\n");
+                        }
                         sl = new StorageList(mountedRemovables);
                         tvEmulatedFiles.setText(sl.emulatedReport);
                         tvEmulatedFiles.append("Total file size: "+ dmEmulated.TotalFileSize / 1000000 + "MB\n");
                         tvEmulatedFiles.append("Backup file size: " + filesToBackupSize / 1000000 + "MB\n");
+                        tvEmulatedFiles.append(filesToBackup);
                         tvStoragelFiles.setText(sl.removableReport);
                         tvStatus.setText(statusreport);
                     }
@@ -167,6 +173,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE) {// If request is cancelled, the result arrays are empty.
+            // TODO: handle first use after accepting / or declining permission by user
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // permission was granted
             } else {
@@ -294,9 +301,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String AnalyzeAndReport(){
-        List<String> fBackup = FilesToBackup(dmEmulated, dmStorage);
-        String report = "Files to bacckup: " + fBackup.size() + "\n" +
-                "File Size: " + filesToBackupSize / 1000000 + " MB\n";
+        fBackup = FilesToBackup(dmEmulated, dmStorage);
+        String report = "Files to backup: " + fBackup.size() + "\n" +
+                "Backup File Size : " + filesToBackupSize / 1000000 + " MB\n";
+
         return report;
     }
 

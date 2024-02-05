@@ -30,14 +30,14 @@ public class StorageList {
         long emulatedBS = emulatedStat.getBlockSizeLong();
         emulatedTotal = emulatedBS * emulatedStat.getBlockCountLong();
         emulatedAvailable = emulatedBS * emulatedStat.getAvailableBlocksLong();
-        emulatedReport = "/storage/emulated/0: " + ((emulatedTotal-emulatedAvailable)/1000000) + "MB\n";
+        emulatedReport = "/storage/emulated/0\n";
         // If the external storage is physical, we need to use the external storage directory.
         for (int i = 0; i < removablePath.length && removablePath[i] != null; i++){
             StatFs storageStat = new StatFs(removablePath[i]);
             long storageBS = storageStat.getBlockSizeLong();
             removableTotal[i] = storageBS * storageStat.getBlockCountLong();
             removableAvailable[i] = storageBS * storageStat.getAvailableBlocksLong();
-            removableReport += removablePath[i] + " Available: " + removableAvailable[i] /1000000 + "MB";
+            removableReport += removablePath[i] + "\nFree space: " + removableAvailable[i] /1000000 + "MB";
         }
     }
 }
