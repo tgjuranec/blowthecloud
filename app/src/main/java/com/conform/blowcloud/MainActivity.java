@@ -1,5 +1,10 @@
 package com.conform.blowcloud;
 
+import static com.conform.blowcloud.BackupStates.state.BACKUP_APPROVED;
+import static com.conform.blowcloud.BackupStates.state.DESTINATION_SPACE_NOT_SUFFICIENT;
+import static com.conform.blowcloud.BackupStates.state.NO_DESTINATION;
+import static com.conform.blowcloud.BackupStates.state.NO_FILES_FOR_BACKUP;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -21,80 +26,90 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SelectDriveDialog.OnDriveSelectedListener{
 
-    File emulated_dir, storage_dir, external_files_dirv30;
+    File emulated_dir, storage_dir;
     TextView tvStoragelFiles, tvEmulatedFiles, tvStatus;
     Button btStart;
-    DocsManager dmEmulated, dmStorage, dmStorage2;
+    DocsManager dmEmulated, dmRemovable;
     File [] storageFiles;
     File [] emulatedFiles;
     StorageList sl;
     Execution exe;
     String removableRoot;  //determines destination's root directory
     String [] commandOutput;
-    String [] mountedRemovables; // list of destination's root candidates (user selects if N>1)
+    String [] mountedRemovables  = new String[5]; // list of destination's root candidates (user selects if N>1)
     long filesToBackupSize = 0;
     List<String> fBackup;
+    BackupStates bs;
+    int nFilesBackedUp = 0;
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
+    SelectDriveDialog selectDriveDialog;
+    ThreadRunner runner;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        bs = new BackupStates();
 
         exe = new Execution(this);
         tvEmulatedFiles = findViewById(R.id.txtEmulatedFiles);
         tvStoragelFiles = findViewById(R.id.txtStorageFiles);
-
         tvStatus = findViewById(R.id.txtStatus);
         btStart = findViewById(R.id.btStartBackup);
-
         tvStatus.setText(R.string.strCollectingData);
 
-
-        mountedRemovables = new String[3];
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // find all mounted drives (except emulated)
-            commandOutput = UtilFunc.run("df").split("\\r?\\n");
-            int i = 0;
-            for (String str : commandOutput){
-                if(str.contains("/dev/fuse") && !str.contains("/storage/emulated")){
-                    mountedRemovables[i] = str.substring(str.lastIndexOf(" ")+1);
-                    i++;
-                }
+        // find all mounted drives (except emulated)
+        commandOutput = UtilFunc.run("df").split("\\r?\\n");
+        int nRemovablesMounted = 0;
+        for (String str : commandOutput){
+            if(str.contains("/dev/fuse") && !str.contains("/storage/emulated")){
+                mountedRemovables[nRemovablesMounted] = str.substring(str.lastIndexOf(" ")+1);
+                nRemovablesMounted++;
             }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             storage_dir = Environment.getStorageDirectory();
             emulated_dir = Environment.getExternalStorageDirectory();
         }
         else{
             emulated_dir = Environment.getExternalStorageDirectory();
         }
+
         dmEmulated = new DocsManager();
-        dmStorage = new DocsManager();
-        dmStorage2 = new DocsManager();
+        dmRemovable = new DocsManager();
         dmEmulated.rootDir = emulated_dir.getPath();
-        if(mountedRemovables[0] == null){
-            // NO OTHER DRIVE MOUNTED
+
+        //check number of mounted removables drives
+        if(nRemovablesMounted == 0){
+            bs.current = NO_DESTINATION;
         }
-        else if (mountedRemovables[0]!= null){
+        else if(nRemovablesMounted == 1){
             removableRoot = mountedRemovables[0];
-            dmStorage.rootDir = removableRoot;
+            dmRemovable.rootDir = removableRoot;
+            bs.current = BACKUP_APPROVED;
         }
-        else if (mountedRemovables[1] != null){
-            dmStorage2.rootDir = mountedRemovables[1];
+        else if (nRemovablesMounted >= 2){
+            selectDriveDialog = new SelectDriveDialog(this,this,mountedRemovables);
+            selectDriveDialog.show(mountedRemovables);
+            bs.current = BackupStates.state.TWO_DESTINATIONS_POSSIBLE;
         }
+
 
 
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
-        } else {
+        }
+        else {
 
            // Permission has already been granted
         }
 
 
-        ThreadRunner runner = new ThreadRunner(new ThreadCallback() {
+
+        runner = new ThreadRunner(new ThreadCallback() {
             @Override
             public void onGetMediastoreDataFinished() {
                 // Use runOnUiThread to update the UI on the main thread
@@ -104,16 +119,47 @@ public class MainActivity extends AppCompatActivity {
                         // Collecting data finished -> analyze data
                         String statusreport = AnalyzeAndReport();
                         String filesToBackup = "";
+                        if(fBackup.size() == 0){
+                            bs.current = NO_FILES_FOR_BACKUP;
+                        }
                         for (int i = 0; i < 10 && i < fBackup.size(); i++){
                             filesToBackup += (fBackup.get(i) + "\n");
                         }
+
                         sl = new StorageList(mountedRemovables);
                         tvEmulatedFiles.setText(sl.emulatedReport);
                         tvEmulatedFiles.append("Total file size: "+ dmEmulated.TotalFileSize / 1000000 + "MB\n");
                         tvEmulatedFiles.append("Backup file size: " + filesToBackupSize / 1000000 + "MB\n");
+                        if((filesToBackupSize+10000000) > sl.removableAvailable[0]){
+                            bs.current = DESTINATION_SPACE_NOT_SUFFICIENT;
+                        }
                         tvEmulatedFiles.append(filesToBackup);
                         tvStoragelFiles.setText(sl.removableReport);
-                        tvStatus.setText(statusreport);
+                        switch(bs.current){
+                            case BACKUP_APPROVED:
+                                tvStatus.setText(R.string.strStateBackupApproved);
+                                break;
+                            case NO_DESTINATION:
+                                tvStatus.setText(R.string.strStateNoDestination);
+                                btStart.setVisibility(View.GONE);
+                                break;
+                            case TWO_DESTINATIONS_POSSIBLE:
+                                tvStatus.setText(R.string.strStateTwoDestinations);
+                                break;
+                            case DESTINATION_SPACE_NOT_SUFFICIENT:
+                                tvStatus.setText(R.string.strStateNotEnoughSpace);
+                                btStart.setVisibility(View.GONE);
+                                break;
+                            case NO_FILES_FOR_BACKUP:
+                                tvStatus.setText(R.string.strStateNoFilesForBackup);
+                                btStart.setVisibility(View.GONE);
+                                break;
+                            case SUSPICIOUS_SYSTEM_STATE:
+                                tvStatus.setText(R.string.strStateSuspSystem);
+                                btStart.setVisibility(View.GONE);
+                                break;
+                        }
+                        tvStatus.append("\n" + statusreport);
                     }
                 });
             }
@@ -124,6 +170,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         tvStatus.setText(R.string.strCopyingFinished);
+                        tvStatus.append(" " + nFilesBackedUp);
 
                     }
                 });
@@ -139,8 +186,10 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
-        runner.getMediastoreData();
 
+        if(removableRoot != null) {
+            runner.getMediastoreData();
+        }
 
 
         btStart.setOnClickListener(new View.OnClickListener() {
@@ -152,17 +201,15 @@ public class MainActivity extends AppCompatActivity {
                 long offset = 10000000;
                 if((requestedFileSize + offset) >= availableSpace) {
                     // THERE IS NOT ENOUGH SPACE - BACKUP STOPPED
-                    tvStatus.setText(R.string.strNotEnoughSpace );
+                    tvStatus.setText(R.string.strStateNotEnoughSpace);
                 }
                 else{
                     // THERE IS ENOUGH SPACE - BACKUP MAY START
-                    tvStatus.setText(R.string.strCopyingStarted);
+
                     runner.copyFiles();
                 }
             }
         });
-
-
         return;
     }
 
@@ -184,9 +231,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void startCopy(){
-
-    }
 
     private void getFilesFromMediaStore(Uri Mediastore_select){
         // Create a projection - the specific columns we want to return
@@ -208,7 +252,7 @@ public class MainActivity extends AppCompatActivity {
         int columndata = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
 
         // Use the cursor to get the image IDs
-        if(cursor != null && cursor.moveToLast()) {
+        if(cursor.moveToLast()) {
             int position = cursor.getPosition();
             cursor.moveToFirst();
             while (cursor.moveToNext()) {
@@ -218,11 +262,8 @@ public class MainActivity extends AppCompatActivity {
                 if(d.contains(emulated_dir.toString())){
                     dmEmulated.addfile(d);
                 }
-                else if (dmStorage.rootDir != null && d.contains(dmStorage.rootDir)){
-                    dmStorage.addfile(d);
-                }
-                else if(dmStorage2.rootDir != null && d.contains(dmStorage2.rootDir)){
-                    dmStorage2.addfile(d);
+                else if (dmRemovable.rootDir != null && d.contains(dmRemovable.rootDir)){
+                    dmRemovable.addfile(d);
                 }
                 else{
                     //ERROR
@@ -257,15 +298,26 @@ public class MainActivity extends AppCompatActivity {
         tv.setText(strPrint);
     }
 
+    /*
+    Callback function from dialog
+     */
+    @Override
+    public void onDriveSelected(String driveRoot) {
+        removableRoot = driveRoot;
+        dmRemovable.rootDir = driveRoot;
+        // One thing
+        if(removableRoot != null) {
+            runner.getMediastoreData();
+        }
+    }
+
     public interface ThreadCallback {
         void onGetMediastoreDataFinished();
         void onCopyFilesFinished();
         void onUpdateUI(int count);
     }
 
-    public interface ThreadCallbackCF{
 
-    }
     public class ThreadRunner {
         private final ThreadCallback callback;
 
@@ -286,9 +338,12 @@ public class MainActivity extends AppCompatActivity {
             new Thread(() -> {
                 // Thread for copy files
                 int i = 0;
+                nFilesBackedUp = 0;
                 for (String f : dmEmulated.fileList.keySet()) {
                     i++;
-                    exe.copyFile(f, UtilFunc.getVolumeRoot(f),removableRoot);
+                    if(exe.copyFile(f, UtilFunc.getVolumeRoot(f),removableRoot)){
+                        nFilesBackedUp += 1;
+                    }
                     if(i%20 == 0) {
                         callback.onUpdateUI(i);
                     }
@@ -301,10 +356,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String AnalyzeAndReport(){
-        fBackup = FilesToBackup(dmEmulated, dmStorage);
+        fBackup = FilesToBackup(dmEmulated, dmRemovable);
         String report = "Files to backup: " + fBackup.size() + "\n" +
                 "Backup File Size : " + filesToBackupSize / 1000000 + " MB\n";
-
         return report;
     }
 
@@ -333,4 +387,6 @@ public class MainActivity extends AppCompatActivity {
         }
         return filesToBackup;
     }
+
+
 }

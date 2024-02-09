@@ -86,7 +86,12 @@ public class Execution {
         String targetFile = sourceFile.replace(sourceRoot, targetRoot);
         // TEST IF FILE EXISTS
         File fTargetFile = new File(targetFile);
-        if(fTargetFile.exists()){
+        int loopMax = 0;
+        while(fTargetFile.exists()){
+            loopMax++;
+            if(loopMax > 10){
+                return false;
+            }
             File fSourceFile = new File(sourceFile);
             if(fSourceFile.length() == fTargetFile.length()){
                 return false;
@@ -104,7 +109,8 @@ public class Execution {
         try {
             Files.copy(sourcePath, targetPath);
         } catch (FileAlreadyExistsException ex){
-            // TODO: HANDLE THAT EXCEPTION (RENAME AND TRY AGAIN)
+            // EXTODO: HANDLE THAT EXCEPTION (RENAME AND TRY AGAIN)
+            // ALREADY HANDLED ABOVE in the while loop
             return false;
         }
         catch (IOException e) {
