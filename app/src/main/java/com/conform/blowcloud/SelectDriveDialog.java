@@ -5,16 +5,23 @@ import android.content.DialogInterface;
 
 import androidx.appcompat.app.AlertDialog;
 
-
+// INTERFACE/LISTENER IMPLEMENTATION
+// CALLING EXTERNAL FUNCTION - CONTROL OTHER ACTIVITY
+// THIS IS MASTER SIDE:
+// CONTAINS: INTERFACE, INTERFACE OBJECT, EXTERNAL FUNCTION CALL
+// SLAVE SIDE:
+// CONTAINS: LISTENER, FUNCTION IMPLEMENTATION THAT'S BEING CALLED BY MASTER
 public class SelectDriveDialog {
     public String removableRoot = null;
     private Context context;
+    // DECLARING OBJECT FOR CONTROL OTHER'S ACTIVITY
     public OnDriveSelectedListener listener;
 
     SelectDriveDialog(Context c, OnDriveSelectedListener listener, String [] driveList){
         this.listener = listener;
         this.context = c;
     }
+    // DEFINING ABSTRACTION INTERFACE FOR CALLING FUNCTION OF OTHER'S ACTIVITY
     public interface OnDriveSelectedListener{
         void onDriveSelected(String driveRoot);
     }
@@ -37,10 +44,11 @@ public class SelectDriveDialog {
         // Set items to display in the dialog
             .setItems(copyDriveList, new DialogInterface.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // The 'which' argument contains the index position of the selected item
-                removableRoot = driveList[which];
-                listener.onDriveSelected(driveList[which]);
+            public void onClick(DialogInterface dialog, int iSelection) {
+                // The 'iSelection' argument contains the index position of the selected item
+                removableRoot = driveList[iSelection];
+                // EXTERNAL FUNCTION CALL
+                listener.onDriveSelected(driveList[iSelection]);
             }
         });
 

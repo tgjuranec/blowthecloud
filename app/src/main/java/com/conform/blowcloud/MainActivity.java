@@ -9,21 +9,36 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.io.File;
+import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+
+// UI
+// TODO: CREATE PROGRESS BAR
+// TODO: ADD VISUAL PRESENTATION OF FILE SIZE AND FREE SPACE ON DRIVE
+
 
 
 public class MainActivity extends AppCompatActivity implements SelectDriveDialog.OnDriveSelectedListener{
@@ -46,6 +61,8 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     SelectDriveDialog selectDriveDialog;
     ThreadRunner runner;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -160,8 +177,12 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                                 break;
                         }
                         tvStatus.append("\n" + statusreport);
+
                     }
                 });
+                Intent intent = new Intent("com.conform.ACTION_FINISH");
+                LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
+
             }
 
             @Override
@@ -188,9 +209,11 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         });
 
         if(removableRoot != null) {
+            Intent progressActivity = new Intent(MainActivity.this, ThreadProgress.class);
+            progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
+            startActivity(progressActivity);
             runner.getMediastoreData();
         }
-
 
         btStart.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -205,7 +228,9 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                 }
                 else{
                     // THERE IS ENOUGH SPACE - BACKUP MAY START
-
+                    Intent progressActivity = new Intent(MainActivity.this, ThreadProgress.class);
+                    progressActivity.putExtra("Title", "Copying Data. Please Wait...");
+                    startActivity(progressActivity);
                     runner.copyFiles();
                 }
             }
@@ -231,10 +256,11 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     }
 
 
-
     private void getFilesFromMediaStore(Uri Mediastore_select){
         // Create a projection - the specific columns we want to return
         // SELECT COLUMN
+
+
         String[] projection = { MediaStore.Images.Media._ID,
                                 MediaStore.Images.Media.DISPLAY_NAME,
                                 MediaStore.Images.Media.DATA};
@@ -250,10 +276,12 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
 
         int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
         int columndata = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-
+        int stepProgress = 0;
         // Use the cursor to get the image IDs
         if(cursor.moveToLast()) {
-            int position = cursor.getPosition();
+            int nExeCopyFiles = cursor.getPosition();
+            stepProgress = nExeCopyFiles /100;
+            int cExeCopyFile = 0;
             cursor.moveToFirst();
             while (cursor.moveToNext()) {
                 int id = cursor.getInt(columnIndex);
@@ -267,6 +295,14 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                 }
                 else{
                     //ERROR
+                }
+                cExeCopyFile++;
+                //  UPDATE PROGRESS
+                if(cExeCopyFile % stepProgress == 0){
+                    Intent intent = new Intent("com.conform.ACTION_UPDATE_PROGRESS");
+                    int progress = 100* cExeCopyFile / nExeCopyFiles;
+                    intent.putExtra("Progress", progress);
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
                 }
             }
         }
@@ -307,6 +343,9 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         dmRemovable.rootDir = driveRoot;
         // One thing
         if(removableRoot != null) {
+            Intent progressActivity = new Intent(MainActivity.this, ThreadProgress.class);
+            progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
+            startActivity(progressActivity);
             runner.getMediastoreData();
         }
     }
@@ -317,6 +356,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         void onUpdateUI(int count);
     }
 
+    final Handler uiHandler = new Handler(Looper.getMainLooper());
 
     public class ThreadRunner {
         private final ThreadCallback callback;
@@ -327,8 +367,10 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
 
         public void getMediastoreData() {
             new Thread(() -> {
+
                 // Perform your thread operations here
                 getFilesFromMediaStore(MediaStore.Files.getContentUri("external"));
+
                 // Once the thread is done, call the callback
                 callback.onGetMediastoreDataFinished();
             }).start();
@@ -338,17 +380,26 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             new Thread(() -> {
                 // Thread for copy files
                 int i = 0;
+                final int nFiles = dmEmulated.fileList.size();
+                final int step = nFiles / 100;
                 nFilesBackedUp = 0;
                 for (String f : dmEmulated.fileList.keySet()) {
                     i++;
                     if(exe.copyFile(f, UtilFunc.getVolumeRoot(f),removableRoot)){
                         nFilesBackedUp += 1;
                     }
-                    if(i%20 == 0) {
-                        callback.onUpdateUI(i);
+                    if((i % step) == 0) {
+                        Intent intent = new Intent("com.conform.ACTION_UPDATE_PROGRESS");
+                        int progress = 100* i / nFiles;
+                        intent.putExtra("Progress", progress);
+                        String TAG = "BlowCloud";
+                        Log.d(TAG,"" + progress);
+                        LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
                     }
                     if (i >= 10000) return;
                 }
+
+                LocalBroadcastManager.getInstance(getParent()).sendBroadcast(new Intent("com.conform.ACTION_FINISH"));
                 callback.onCopyFilesFinished();
 
             }).start();

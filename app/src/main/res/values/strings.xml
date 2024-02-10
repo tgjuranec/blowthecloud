@@ -9,8 +9,8 @@
     <string name="strStateNoFilesForBackup">Backup cannot be performed. All files are backed up.</string>
     <string name="strStateSuspSystem">Backup cannot be performed. Suspicious system state observed.</string>
 
-<!--    <string name="strCopyingStarted">Backup started. Please wait until finished.</string>-->
-<!--    <string name="strCopyingStatus">Backup is started. Number of already backed up files: </string>-->
+    <!--    <string name="strCopyingStarted">Backup started. Please wait until finished.</string>-->
+    <!--    <string name="strCopyingStatus">Backup is started. Number of already backed up files: </string>-->
     <string name="strCopyingFinished">Backup is finished. \nNumber of files backed up: </string>
 
 </resources>
