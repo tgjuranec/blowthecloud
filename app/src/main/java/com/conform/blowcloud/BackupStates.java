@@ -8,6 +8,7 @@ public class BackupStates {
         DESTINATION_SPACE_NOT_SUFFICIENT,
         NO_FILES_FOR_BACKUP,
         SUSPICIOUS_SYSTEM_STATE,
+        BACKUP_CANCELED,
     }
     public state current;
 }

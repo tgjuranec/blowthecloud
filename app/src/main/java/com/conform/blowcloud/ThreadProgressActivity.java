@@ -3,6 +3,7 @@ package com.conform.blowcloud;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -11,10 +12,8 @@ import android.os.Bundle;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import java.util.ConcurrentModificationException;
 
-
-public class ThreadProgress extends AppCompatActivity {
+public class ThreadProgressActivity extends AppCompatActivity {
     public ProgressBar pbStatus;
     public TextView tvTitle;
     public Context parentContext;
@@ -24,7 +23,7 @@ public class ThreadProgress extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             // Check for your specific action
             if ("com.conform.ACTION_FINISH".equals(intent.getAction())) {
-                finish();
+                finishActivity();
             }
             if ("com.conform.ACTION_UPDATE_PROGRESS".equals(intent.getAction())) {
                 Bundle data = intent.getExtras();
@@ -66,6 +65,13 @@ public class ThreadProgress extends AppCompatActivity {
         super.onDestroy();
         // Unregister the receiver
         LocalBroadcastManager.getInstance(this).unregisterReceiver(finishReceiver);
+    }
+
+    private void finishActivity(){
+        Intent resultIntent = new Intent();
+        resultIntent.putExtra("key", "value"); // Replace "key" and "value" with your actual data
+        setResult(Activity.RESULT_OK, resultIntent);
+        finish();
     }
 
 

@@ -22,7 +22,7 @@
         android:theme="@style/Theme.BlowCloud"
         tools:targetApi="31">
         <activity
-            android:name=".ThreadProgress"
+            android:name=".ThreadProgressActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"

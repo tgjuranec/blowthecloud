@@ -5,6 +5,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:theme="@style/Theme.Material3.DynamicColors.Light"
+
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -16,21 +18,59 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-            <TextView
-                android:id="@+id/txtEmulatedFiles"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="200dp"
-                android:maxHeight="400dp"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
                 android:layout_weight="5"
-                />
-            <TextView
-                android:id="@+id/txtStorageFiles"
+                >
+                <TextView
+                    android:id="@+id/txtEmulatedFiles"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:minHeight="50dp"
+                    android:maxHeight="400dp"
+                    android:text="Source"
+
+                    />
+                <ImageView
+                    android:id="@+id/imgCirleEmulated"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="55dp"
+                    android:layout_marginLeft="30dp"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:src="@drawable/circle_emulated"
+                    />
+            </LinearLayout>
+
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="200dp"
-                android:maxHeight="400dp"
-                android:layout_weight="5"/>
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:layout_weight="5">
+
+                <TextView
+                    android:id="@+id/txtStorageFiles"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:minHeight="50dp"
+                    android:maxHeight="400dp"
+                    android:text="Destination"
+                    />
+                <ImageView
+                    android:id="@+id/imgCirleRemovable"
+                    android:layout_gravity="center"
+                    android:layout_width="100sp"
+                    android:layout_height="100sp"
+                    android:minHeight="20sp"
+                    android:minWidth="20sp"
+                    android:src="@drawable/circle_removable"
+                    android:layout_margin="30sp"
+                    />
+            </LinearLayout>
+
+
 
         </LinearLayout>
         <Button
@@ -43,7 +83,7 @@
             android:id="@+id/txtStatus"
             android:layout_width="wrap_content"
             android:layout_height="80dp"
-            android:text="Hello World!"
+            android:text="@string/strCollectingData"
             android:layout_gravity="center"
             android:gravity="center"/>
         <ImageView
@@ -51,7 +91,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:scaleType="fitCenter"
-            android:src="@drawable/ig2"
+            android:src="@drawable/ig4"
             android:contentDescription="TODO" />
 
     </LinearLayout>
