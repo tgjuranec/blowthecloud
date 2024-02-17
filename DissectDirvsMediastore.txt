@@ -1,0 +1,56 @@
+ Dissect Dir
+ dmEmulated size = 874
+ dmRemovable size = 845
+
+MediaStore
+ size = 858
+ size = 845
+
+
+Mediastore
+fBackup
+0 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240215-WA0001.jpg"
+1 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240215-WA0000.jpg"
+2 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240215-WA0002.jpg"
+3 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240216-WA0000.jpg"
+4 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240126-WA0000.jpg"
+5 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240214-WA0006.jpeg"
+6 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/VID-20240213-WA0000.mp4"
+7 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240213-WA0001.jpg"
+8 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240126-WA0003.jpg"
+9 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240216-WA0003.jpg"
+10 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240216-WA0002.jpg"
+11 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240214-WA0000.jpg"
+12 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240212-WA0001.jpg"
+13 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240212-WA0000.jpg"
+
+
+0 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052877-VID-20231214-WA0002.mp4"
+1 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240215-WA0001.jpg"
+2 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052877-VID-20231221-WA0001.mp4"
+3 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240215-WA0000.jpg"
+4 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052877-VID-20231217-WA0002.mp4"
+5 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052877-VID-20231217-WA0003.mp4"
+6 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052860-VID-20231230-WA0011.mp4"
+7 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240215-WA0002.jpg"
+8 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240216-WA0000.jpg"
+9 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240126-WA0000.jpg"
+10 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052877-VID-20231127-WA0000.mp4"
+11 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052877-VID-20231217-WA0001.mp4"
+12 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240214-WA0006.jpeg"
+13 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052859-VID-20231230-WA0013.mp4"
+14 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/VID-20240213-WA0000.mp4"
+15 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240213-WA0001.jpg"
+16 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052860-VID-20231229-WA0002.mp4"
+17 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240126-WA0003.jpg"
+18 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052877-VID-20231225-WA0005.mp4"
+19 = "/storage/emulated/0/.trashed-1709052877-VID-20231127-WA0000.mp4"
+20 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240216-WA0003.jpg"
+21 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240216-WA0002.jpg"
+22 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052877-VID-20231212-WA0001.mp4"
+23 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052859-VID-20240123-WA0003.mp4"
+24 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052859-VID-20240121-WA0001.mp4"
+25 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240214-WA0000.jpg"
+26 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240212-WA0001.jpg"
+27 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240212-WA0000.jpg"
+28 = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.trashed-1709052876-VID-20231217-WA0004.mp4"

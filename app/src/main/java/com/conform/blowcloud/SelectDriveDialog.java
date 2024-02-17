@@ -2,8 +2,15 @@ package com.conform.blowcloud;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.os.Build;
+import android.os.Environment;
+import android.os.storage.StorageManager;
+import android.os.storage.StorageVolume;
+import android.util.Log;
 
 import androidx.appcompat.app.AlertDialog;
+
+import java.util.List;
 
 // INTERFACE/LISTENER IMPLEMENTATION
 // CALLING EXTERNAL FUNCTION - CONTROL OTHER ACTIVITY
@@ -18,6 +25,7 @@ public class SelectDriveDialog {
     private Context context;
     // DECLARING OBJECT FOR CONTROL OTHER'S ACTIVITY
     public OnDriveSelectedListener listener;
+    private String TAG = "SelectDriveDialog";
 
     SelectDriveDialog(Context c, OnDriveSelectedListener listener){
         this.listener = listener;
@@ -31,13 +39,6 @@ public class SelectDriveDialog {
         // Prepare the dialog by setting up the builder
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
 
-        // WE COPY ALL Strings from driveList which are not null to copyDriveList (we filter it)
-        /*int nDrives = 0;
-        for(String str : driveList){
-            if(str != null){
-                nDrives++;
-            }
-        }*/
 
         builder.setTitle("Set a Destination Drive")
         // Set items to display in the dialog
@@ -54,4 +55,23 @@ public class SelectDriveDialog {
         // Create and show the alert dialog
         builder.create().show();
     }
+    public void printStorageVolumes(Context context) {
+        StorageManager storageManager = (StorageManager) context.getSystemService(Context.STORAGE_SERVICE);
+        if (storageManager == null) {
+            return;
+        }
+
+            List<StorageVolume> storageVolumes = storageManager.getStorageVolumes();
+            for (StorageVolume volume : storageVolumes) {
+                Log.d(TAG, "Storage Volume: " + volume.getDescription(context) +
+                        "\nVolume Name: " + volume.getMediaStoreVolumeName() +
+                        "\nPath: " + volume.getDirectory() +
+                        "\nUUID: " + volume.getUuid() +
+                        "\nIs Primary: " + volume.isPrimary() +
+                        "\nIs Emulated: " + volume.isEmulated() +
+                        "\nIs Removable: " + volume.isRemovable());
+            }
+
+    }
+
 }

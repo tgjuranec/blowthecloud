@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -22,6 +23,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.storage.StorageManager;
+import android.os.storage.StorageVolume;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
@@ -38,7 +41,6 @@ import java.util.List;
 // DONETODO: CREATE PROGRESS BAR - CREATED NEW ACTIVITY THREADPROGRESS
 // TODO: ADD VISUAL PRESENTATION OF FILE SIZE AND FREE SPACE ON DRIVE
 // TODO: INCLUDE FAT32 (VFAT) FILE SIZE LIMITS OF
-// TODO: FILL DocsManager OBJECTS USING DIRECTORY ANALYZING NOT MEDIASTORE
 
 
 
@@ -54,8 +56,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     StorageList sl;
     Execution exe;
     String removableRoot;  //determines destination's root directory
-    String [] commandOutput;
-    String [] mountedRemovables  = new String[5]; // list of destination's root candidates (user selects if N>1)
+    String [] mountedRemovables; // list of destination's root candidates (user selects if N>1)
     long filesToBackupSize = 0;
     List<String> fBackup;
     BackupStates bs;
@@ -63,6 +64,9 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     SelectDriveDialog selectDriveDialog;
     ThreadRunner runner;
+    DissectDirRecursive ddrEmulated, ddrRemovable;
+    Context context;
+    UtilStorage utilStorage;
 
 
 
@@ -70,6 +74,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        context = this;
         bs = new BackupStates();
 
         exe = new Execution(this);
@@ -81,15 +86,10 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         imgRemovable = findViewById(R.id.imgCirleRemovable);
         tvStatus.setText(R.string.strCollectingData);
 
-        // find all mounted drives (except emulated)
-        commandOutput = UtilFunc.run("df").split("\\r?\\n");
-        int nRemovablesMounted = 0;
-        for (String str : commandOutput){
-            if(str.contains("/dev/fuse") && !str.contains("/storage/emulated")){
-                mountedRemovables[nRemovablesMounted] = str.substring(str.lastIndexOf(" ")+1);
-                nRemovablesMounted++;
-            }
-        }
+
+
+
+
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             storage_dir = Environment.getStorageDirectory();
@@ -98,12 +98,14 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         else{
             emulated_dir = Environment.getExternalStorageDirectory();
         }
-
+        utilStorage = new UtilStorage(this);
         dmEmulated = new DocsManager();
         dmRemovable = new DocsManager();
         dmEmulated.rootDir = emulated_dir.getPath();
 
         //check number of mounted removables drives
+        int nRemovablesMounted = utilStorage.storageList.size() - 1;
+        mountedRemovables = utilStorage.mountedRemovables;
         if(nRemovablesMounted == 0){
             bs.current = NO_DESTINATION;
         }
@@ -115,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         else if (nRemovablesMounted >= 2){
             String [] copyDriveList = new String[nRemovablesMounted+1];
             for (int i = 0; i < nRemovablesMounted; i++){
-                copyDriveList[i] = mountedRemovables[i];
+                copyDriveList[i] = mountedRemovables[i] + " \"" + utilStorage.storageList.get(mountedRemovables[i]) + "\"";
             }
             copyDriveList[nRemovablesMounted] = "Cancel";
             selectDriveDialog = new SelectDriveDialog(this,this);
@@ -147,7 +149,6 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                         AnalyzeAndReport();
                     }
                 });
-
             }
 
             @Override
@@ -176,35 +177,27 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         });
 
         if(removableRoot != null) {
-            Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
-            progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
-            startActivity(progressActivity);
-            runner.getMediastoreData();
+            CollectData();
         }
 
         btStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //CHECK AVAILABLE SIZE
-                long requestedFileSize = dmEmulated.TotalFileSize;
-                long availableSpace = sl.emulatedTotal;
-                long offset = 10000000;
-                if((requestedFileSize + offset) >= availableSpace) {
-                    // THERE IS NOT ENOUGH SPACE - BACKUP STOPPED
-                    tvStatus.setText(R.string.strStateNotEnoughSpace);
-                }
-                else{
-                    // THERE IS ENOUGH SPACE - BACKUP MAY START
-                    Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
-                    progressActivity.putExtra("Title", "Copying Data. Please Wait...");
-                    startActivity(progressActivity);
-                    runner.copyFiles();
-                }
+                Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
+                progressActivity.putExtra("Title", "Copying Data. Please Wait...");
+                startActivity(progressActivity);
+                runner.copyFiles();
+
             }
         });
         return;
     }
-
+    private void CollectData(){
+        Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
+        progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
+        startActivity(progressActivity);
+        runner.getMediastoreData();
+    }
     /*
     CALLBACK function after permission are processed (enabled or otherwise)
      */
@@ -223,10 +216,11 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     }
 
 
-    private void CollectingData(Uri Mediastore_select){
+    private void DissectMediaStore(){
+        final Uri Mediastore_select = MediaStore.Files.getContentUri("external");
+
         // Create a projection - the specific columns we want to return
         // SELECT COLUMN
-
 
         String[] projection = { MediaStore.Images.Media._ID,
                                 MediaStore.Images.Media.DISPLAY_NAME,
@@ -277,14 +271,6 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     }
 
 
-    private File [] ls(File dir){
-        File [] ls = null;
-        if(dir.isDirectory()){
-            ls = dir.listFiles();
-        }
-        return ls;
-    }
-
 
     private void printStrings(String [] strList, TextView tv){
         if(tv == null){
@@ -306,20 +292,17 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
      */
     @Override
     public void onDriveSelected(String driveRoot) {
+        String [] splitted = driveRoot.split(" ");
         if(driveRoot.equals("Cancel")) {
             bs.current = BACKUP_CANCELED;
             AnalyzeAndReport();
         }
         else {
-            removableRoot = driveRoot;
-            dmRemovable.rootDir = driveRoot;
+            removableRoot = splitted[0];
+            dmRemovable.rootDir = splitted[0];
             bs.current = BACKUP_APPROVED;
-            // One thing
             if (removableRoot != null) {
-                Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
-                progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
-                startActivity(progressActivity);
-                runner.getMediastoreData();
+                CollectData();
             }
         }
     }
@@ -343,13 +326,23 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             new Thread(() -> {
 
                 // Perform your thread operations here
-                CollectingData(MediaStore.Files.getContentUri("external"));
+                DissectMediaStore();
 
                 // Once the thread is done, call the callback
                 callback.AnalyzeData();
                 // STOP PROGRESS BAR ACTIVITY
                 Intent intent = new Intent("com.conform.ACTION_FINISH");
                 LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
+            }).start();
+        }
+
+        public void DissectDir(){
+            new Thread(() -> {
+                ddrEmulated = new DissectDirRecursive(emulated_dir.getAbsolutePath(), dmEmulated);
+                ddrRemovable = new DissectDirRecursive(removableRoot, dmRemovable);
+                Intent intent = new Intent("com.conform.ACTION_FINISH");
+                LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
+                callback.AnalyzeData();
             }).start();
         }
 
@@ -394,6 +387,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         tvEmulatedFiles.setText(sl.emulatedReport);
         tvStoragelFiles.setText(sl.removableReport);
         String statusreport = "";
+        int iEmulatedDiameter, iRemovableDiameter;
         if(bs.current == BACKUP_APPROVED) {
             fBackup = FilesToBackup(dmEmulated, dmRemovable);
              statusreport = "Files to backup: " + fBackup.size() + "\n" +
@@ -403,9 +397,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             } else if ((filesToBackupSize + 10000000) > sl.removableAvailable) {
                 bs.current = DESTINATION_SPACE_NOT_SUFFICIENT;
             }
-
             // SET SIZE OF CIRCLES
-            int iEmulatedDiameter, iRemovableDiameter;
             if (filesToBackupSize > 0) {
                 double AvailToReqRatio = (double) sl.removableAvailable / filesToBackupSize;
                 if (AvailToReqRatio > 25) {
@@ -426,21 +418,26 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                 iEmulatedDiameter = 20;
                 iRemovableDiameter = 100;
             }
-            ViewGroup.LayoutParams emulatedParams = imgEmulated.getLayoutParams();
-            ViewGroup.LayoutParams removableParams = imgRemovable.getLayoutParams();
-            float scale = getResources().getDisplayMetrics().density;
-            emulatedParams.width = (int) scale * (iEmulatedDiameter);
-            emulatedParams.height = (int) scale * (iEmulatedDiameter);
-            removableParams.width = (int) scale * (iRemovableDiameter);
-            removableParams.height = (int) scale * (iRemovableDiameter);
-            imgEmulated.layout(20,(140 - iEmulatedDiameter)/2,20,20);
-            imgRemovable.layout(20,(140 - iRemovableDiameter)/2,20,20);
-            imgEmulated.setLayoutParams(emulatedParams);
-            imgRemovable.setLayoutParams(removableParams);
+
             tvEmulatedFiles.append("Total file size: "+ dmEmulated.TotalFileSize / 1000000 + "MB\n");
             tvEmulatedFiles.append("Backup file size: " + filesToBackupSize / 1000000 + "MB\n");
         }
+        else{
+            iEmulatedDiameter = 20;
+            iRemovableDiameter = 100;
+        }
 
+        ViewGroup.LayoutParams emulatedParams = imgEmulated.getLayoutParams();
+        ViewGroup.LayoutParams removableParams = imgRemovable.getLayoutParams();
+        float scale = getResources().getDisplayMetrics().density;
+        emulatedParams.width = (int) scale * (iEmulatedDiameter);
+        emulatedParams.height = (int) scale * (iEmulatedDiameter);
+        removableParams.width = (int) scale * (iRemovableDiameter);
+        removableParams.height = (int) scale * (iRemovableDiameter);
+        imgEmulated.layout(20,(140 - iEmulatedDiameter)/2,20,20);
+        imgRemovable.layout(20,(140 - iRemovableDiameter)/2,20,20);
+        imgEmulated.setLayoutParams(emulatedParams);
+        imgRemovable.setLayoutParams(removableParams);
 
 
         switch(bs.current){
