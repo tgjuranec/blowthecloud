@@ -50,11 +50,11 @@ public class UtilStorage {
         }
         else{
             // find all mounted drives (except emulated)
-            commandOutput = UtilFunc.run("df").split("\\r?\\n");
+            commandOutput = UtilFunc.run("ls storage").split("\\r?\\n");
             int nRemovablesMounted = 0;
             for (String str : commandOutput){
-                if(str.contains("/dev/fuse") && !str.contains("/storage/emulated")){
-                    mountedRemovables[nRemovablesMounted] = str.substring(str.lastIndexOf(" ")+1);
+                if(!str.contains("self") && !str.contains("emulated") && !str.contains("primary")){
+                    mountedRemovables[nRemovablesMounted] = "/storage/" + str.substring(str.lastIndexOf(" ")+1);
                     nRemovablesMounted++;
                 }
             }

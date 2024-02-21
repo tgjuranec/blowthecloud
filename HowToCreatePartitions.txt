@@ -1,0 +1,25 @@
+To create two partitions on a USB stick, format them into FAT32 file system, and set labels on Windows 10/11, you can use the built-in Disk Management tool or the Diskpart command-line utility. Here's how to do it with both methods:
+Using Disk Management:
+
+    Connect your USB stick to your computer.
+    Press Windows + X and choose 'Disk Management' from the menu.
+    Locate your USB stick in the list of drives.
+    Right-click on the USB stick and select 'Shrink Volume' to reduce its size to the desired size for the first partition.
+    Right-click on the unallocated space and select 'New Simple Volume'.
+    Follow the wizard to create the first partition with FAT32 file system and assign a label to it.
+    Repeat steps 4 to 6 to create the second partition.
+
+Using Diskpart:
+
+    Press Windows + R, type diskpart, and hit Enter to open the command prompt.
+    Type list disk to see all connected disks.
+    Identify your USB stick (e.g., Disk 1) and type select disk 1.
+    Type clean to remove all partitions and data.
+    Create the first partition with create partition primary size=10000 (replace 10000 with the size you want in MB).
+    Select the new partition with select partition 1.
+    Format it as FAT32 and assign a label with format fs=fat32 label="Partition1" quick.
+    Repeat steps 5 to 7 to create the second partition.
+
+Remember to replace the partition sizes and labels with the ones you prefer. After creating the partitions, you can use the 'Format' tool in Windows Explorer to format them to FAT32 and assign labels if you prefer a graphical interface.
+
+Alternatively, you can use third-party software like AOMEI Partition Assistant or EaseUS Partition Master, which offer a user-friendly interface for partitioning and formatting drives.

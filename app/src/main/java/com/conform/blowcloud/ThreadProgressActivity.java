@@ -30,7 +30,6 @@ public class ThreadProgressActivity extends AppCompatActivity {
                 int progress = data.getInt("Progress");
                 pbStatus.setProgress(progress);
             }
-
         }
     };
 

@@ -81,8 +81,6 @@ public class Execution {
     }
 
     public boolean copyFile(String sourceFile, String sourceRoot, String targetRoot) {
-        InputStream in = null;
-        OutputStream out = null;
         String targetFile = sourceFile.replace(sourceRoot, targetRoot);
         // TEST IF FILE EXISTS
         File fTargetFile = new File(targetFile);
@@ -98,6 +96,7 @@ public class Execution {
             }
             else {
                 targetFile = UtilFunc.IncrementFileName(targetFile);
+                fTargetFile = new File(targetFile);
             }
         }
         File targetAbsDir = new File(UtilFunc.getAbsoluteDir(targetFile));

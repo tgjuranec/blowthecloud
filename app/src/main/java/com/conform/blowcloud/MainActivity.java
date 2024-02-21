@@ -41,6 +41,7 @@ import java.util.List;
 // DONETODO: CREATE PROGRESS BAR - CREATED NEW ACTIVITY THREADPROGRESS
 // TODO: ADD VISUAL PRESENTATION OF FILE SIZE AND FREE SPACE ON DRIVE
 // TODO: INCLUDE FAT32 (VFAT) FILE SIZE LIMITS OF
+// TODO: SOLVE THE PROBLEM OF NOT COPYING FROM XIAOMI - java.nio.file.AccessDeniedException: /storage/8F5B-16E9/DCIM/Camera/IMG_20230527_170223.jpg
 
 
 
@@ -86,24 +87,14 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         imgRemovable = findViewById(R.id.imgCirleRemovable);
         tvStatus.setText(R.string.strCollectingData);
 
-
-
-
-
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            storage_dir = Environment.getStorageDirectory();
-            emulated_dir = Environment.getExternalStorageDirectory();
-        }
-        else{
-            emulated_dir = Environment.getExternalStorageDirectory();
-        }
-        utilStorage = new UtilStorage(this);
+        
+        emulated_dir = Environment.getExternalStorageDirectory();
         dmEmulated = new DocsManager();
         dmRemovable = new DocsManager();
         dmEmulated.rootDir = emulated_dir.getPath();
 
         //check number of mounted removables drives
+        utilStorage = new UtilStorage(this);
         int nRemovablesMounted = utilStorage.storageList.size() - 1;
         mountedRemovables = utilStorage.mountedRemovables;
         if(nRemovablesMounted == 0){
@@ -193,9 +184,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         return;
     }
     private void CollectData(){
-        Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
-        progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
-        startActivity(progressActivity);
+
         runner.getMediastoreData();
     }
     /*
@@ -218,7 +207,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
 
     private void DissectMediaStore(){
         final Uri Mediastore_select = MediaStore.Files.getContentUri("external");
-
+        boolean progressActivityStarted = false;
         // Create a projection - the specific columns we want to return
         // SELECT COLUMN
 
@@ -241,8 +230,15 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         // Use the cursor to get the image IDs
         if(cursor.moveToLast()) {
             int nExeCopyFiles = cursor.getPosition();
+            if(nExeCopyFiles > 1000){
+                Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
+                progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
+                startActivity(progressActivity);
+                progressActivityStarted = true;
+            }
             stepProgress = nExeCopyFiles /100;
             int cExeCopyFile = 0;
+
             cursor.moveToFirst();
             while (cursor.moveToNext()) {
                 int id = cursor.getInt(columnIndex);
@@ -259,7 +255,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                 }
                 cExeCopyFile++;
                 //  UPDATE PROGRESS
-                if(cExeCopyFile % stepProgress == 0){
+                if(progressActivityStarted == true && cExeCopyFile % stepProgress == 0){
                     Intent intent = new Intent("com.conform.ACTION_UPDATE_PROGRESS");
                     int progress = 100* cExeCopyFile / nExeCopyFiles;
                     intent.putExtra("Progress", progress);
@@ -268,6 +264,11 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             }
         }
         cursor.close();
+        if(progressActivityStarted == true){
+            // STOP PROGRESS BAR ACTIVITY
+            Intent intent = new Intent("com.conform.ACTION_FINISH");
+            LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
+        }
     }
 
 
@@ -330,9 +331,8 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
 
                 // Once the thread is done, call the callback
                 callback.AnalyzeData();
-                // STOP PROGRESS BAR ACTIVITY
-                Intent intent = new Intent("com.conform.ACTION_FINISH");
-                LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
+
+
             }).start();
         }
 
@@ -364,12 +364,12 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                         intent.putExtra("Progress", progress);
                         String TAG = "BlowCloud";
                         Log.d(TAG,"" + progress);
-                        LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
+                        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
                     }
                     if (i >= 10000) return;
                 }
 
-                LocalBroadcastManager.getInstance(getParent()).sendBroadcast(new Intent("com.conform.ACTION_FINISH"));
+                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent("com.conform.ACTION_FINISH"));
                 callback.onCopyFilesFinished();
 
             }).start();
