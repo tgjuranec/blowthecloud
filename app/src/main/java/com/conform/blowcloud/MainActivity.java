@@ -23,8 +23,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.storage.StorageManager;
-import android.os.storage.StorageVolume;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
@@ -34,6 +32,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +41,7 @@ import java.util.List;
 // TODO: ADD VISUAL PRESENTATION OF FILE SIZE AND FREE SPACE ON DRIVE
 // TODO: INCLUDE FAT32 (VFAT) FILE SIZE LIMITS OF
 // TODO: SOLVE THE PROBLEM OF NOT COPYING FROM XIAOMI - java.nio.file.AccessDeniedException: /storage/8F5B-16E9/DCIM/Camera/IMG_20230527_170223.jpg
+// TODO: CREATE SYSTEMATICALLY CALLS: MEDIASTORE, FILESYSTEM, SAF (DocumentFile)
 
 
 
@@ -69,7 +69,8 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     Context context;
     UtilStorage utilStorage;
 
-
+    int REQUEST_CODE_OPEN_DESTINATION_DIRECTORY = 77;
+    int REQUEST_CODE_OPEN_SOURCE_DIRECTORY = 777;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,7 +88,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         imgRemovable = findViewById(R.id.imgCirleRemovable);
         tvStatus.setText(R.string.strCollectingData);
 
-        
+
         emulated_dir = Environment.getExternalStorageDirectory();
         dmEmulated = new DocsManager();
         dmRemovable = new DocsManager();
@@ -100,12 +101,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         if(nRemovablesMounted == 0){
             bs.current = NO_DESTINATION;
         }
-        else if(nRemovablesMounted == 1){
-            removableRoot = mountedRemovables[0];
-            dmRemovable.rootDir = removableRoot;
-            bs.current = BACKUP_APPROVED;
-        }
-        else if (nRemovablesMounted >= 2){
+        else if (nRemovablesMounted >= 1){
             String [] copyDriveList = new String[nRemovablesMounted+1];
             for (int i = 0; i < nRemovablesMounted; i++){
                 copyDriveList[i] = mountedRemovables[i] + " \"" + utilStorage.storageList.get(mountedRemovables[i]) + "\"";
@@ -113,11 +109,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             copyDriveList[nRemovablesMounted] = "Cancel";
             selectDriveDialog = new SelectDriveDialog(this,this);
             selectDriveDialog.show(copyDriveList);
-            bs.current = BackupStates.state.TWO_DESTINATIONS_POSSIBLE;
         }
-
-
-
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
@@ -167,25 +159,31 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             }
         });
 
-        if(removableRoot != null) {
-            CollectData();
-        }
+
 
         btStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
-                progressActivity.putExtra("Title", "Copying Data. Please Wait...");
-                startActivity(progressActivity);
-                runner.copyFiles();
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q){
+                    Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
+                    progressActivity.putExtra("Title", "Copying Data. Please Wait...");
+                    startActivity(progressActivity);
+                    runner.copyFilesUri();
+                }
+                else {
+                    Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
+                    progressActivity.putExtra("Title", "Copying Data. Please Wait...");
+                    startActivity(progressActivity);
+                    runner.copyFilesUri();
+                }
+
 
             }
         });
-        return;
     }
-    private void CollectData(){
 
-        runner.getMediastoreData();
+    private void CollectData(){
+        runner.DissectDir();
     }
     /*
     CALLBACK function after permission are processed (enabled or otherwise)
@@ -267,7 +265,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         if(progressActivityStarted == true){
             // STOP PROGRESS BAR ACTIVITY
             Intent intent = new Intent("com.conform.ACTION_FINISH");
-            LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
         }
     }
 
@@ -302,7 +300,11 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             removableRoot = splitted[0];
             dmRemovable.rootDir = splitted[0];
             bs.current = BACKUP_APPROVED;
-            if (removableRoot != null) {
+            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q){
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                startActivityForResult(intent, REQUEST_CODE_OPEN_SOURCE_DIRECTORY);
+            }
+            else  {
                 CollectData();
             }
         }
@@ -341,7 +343,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                 ddrEmulated = new DissectDirRecursive(emulated_dir.getAbsolutePath(), dmEmulated);
                 ddrRemovable = new DissectDirRecursive(removableRoot, dmRemovable);
                 Intent intent = new Intent("com.conform.ACTION_FINISH");
-                LocalBroadcastManager.getInstance(getParent()).sendBroadcast(intent);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                 callback.AnalyzeData();
             }).start();
         }
@@ -364,14 +366,31 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                         intent.putExtra("Progress", progress);
                         String TAG = "BlowCloud";
                         Log.d(TAG,"" + progress);
-                        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+                        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
                     }
                     if (i >= 10000) return;
                 }
 
-                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(new Intent("com.conform.ACTION_FINISH"));
+                LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent("com.conform.ACTION_FINISH"));
                 callback.onCopyFilesFinished();
 
+            }).start();
+
+        }
+
+        public void copyFilesUri(){
+            new Thread(()->{
+                if(sourceUri != null && destinationUri != null){
+                    try {
+                        DocumentCopier documentCopier = new DocumentCopier(context);
+                        documentCopier.copyDirectory(sourceUri, destinationUri);
+                    }
+                    catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent("com.conform.ACTION_FINISH"));
+                callback.onCopyFilesFinished();
             }).start();
         }
         public void CancelTask(){
@@ -495,17 +514,21 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         }
         return filesToBackup;
     }
-
+    Uri sourceUri;
+    Uri destinationUri;
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 2 && resultCode == RESULT_OK) {
-            if (data != null) {
-                String result = data.getStringExtra("key"); // Replace "key" with your actual key
-                // Handle the result here
-            }
+        if (requestCode == REQUEST_CODE_OPEN_SOURCE_DIRECTORY && resultCode == RESULT_OK) {
+            sourceUri = data.getData();
+            // Request the URI of the destination directory
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            startActivityForResult(intent, REQUEST_CODE_OPEN_DESTINATION_DIRECTORY);
+        }
+        else if(requestCode == REQUEST_CODE_OPEN_DESTINATION_DIRECTORY && resultCode == RESULT_OK){
+            destinationUri = data.getData();
+            CollectData();
         }
     }
-
 
 }
