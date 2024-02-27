@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.storage.StorageManager;
 import android.os.storage.StorageVolume;
+import android.util.Log;
 
 import java.util.HashMap;
 import java.util.List;
@@ -50,11 +51,12 @@ public class UtilStorage {
         }
         else{
             // find all mounted drives (except emulated)
-            commandOutput = UtilFunc.run("ls storage").split("\\r?\\n");
+            commandOutput = UtilFunc.run("mount").split("\\r?\\n");
+
             int nRemovablesMounted = 0;
             for (String str : commandOutput){
-                if(!str.contains("self") && !str.contains("emulated") && !str.contains("primary")){
-                    mountedRemovables[nRemovablesMounted] = "/storage/" + str.substring(str.lastIndexOf(" ")+1);
+                if(str.contains("vfat") && !str.contains("emulated")){
+                    mountedRemovables[nRemovablesMounted] = str.substring(str.lastIndexOf(" ")+1);
                     nRemovablesMounted++;
                 }
             }
@@ -68,7 +70,7 @@ public class UtilStorage {
                 }
                 else{
                     for (String dfStorage:mountedRemovables){
-                        if(dfStorage.contains(uuid)){
+                        if(dfStorage != null && dfStorage.contains(uuid)){
                             key = dfStorage;
                             break;
                         }

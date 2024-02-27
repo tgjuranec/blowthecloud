@@ -164,20 +164,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         btStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q){
-                    Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
-                    progressActivity.putExtra("Title", "Copying Data. Please Wait...");
-                    startActivity(progressActivity);
-                    runner.copyFilesUri();
-                }
-                else {
-                    Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
-                    progressActivity.putExtra("Title", "Copying Data. Please Wait...");
-                    startActivity(progressActivity);
-                    runner.copyFilesUri();
-                }
-
-
+                runner.copyFilesUri();
             }
         });
     }
@@ -382,14 +369,13 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             new Thread(()->{
                 if(sourceUri != null && destinationUri != null){
                     try {
-                        DocumentCopier documentCopier = new DocumentCopier(context);
+                        DocumentCopier documentCopier = new DocumentCopier(context, dmEmulated.rootDir, dmRemovable.rootDir, dmEmulated.fileList.size());
                         documentCopier.copyDirectory(sourceUri, destinationUri);
                     }
                     catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-                LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent("com.conform.ACTION_FINISH"));
                 callback.onCopyFilesFinished();
             }).start();
         }

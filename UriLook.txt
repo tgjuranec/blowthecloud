@@ -1,0 +1,4 @@
+sourceDir:
+content://com.android.externalstorage.documents/tree/primary%3A/document/primary%3AWhatsApp%2FMedia%2FWhatsApp%20Stickers
+sourceFile:
+content://com.android.externalstorage.documents/tree/primary%3A/document/primary%3AWhatsApp%2FMedia%2FWhatsApp%20Stickers%2FSTK-20230729-WA0033.webp

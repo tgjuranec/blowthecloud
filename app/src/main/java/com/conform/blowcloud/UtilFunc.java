@@ -1,5 +1,7 @@
 package com.conform.blowcloud;
 
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
@@ -138,6 +140,7 @@ public class UtilFunc {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        Log.d("UtilStorage", output);
         return output;
     }
 
