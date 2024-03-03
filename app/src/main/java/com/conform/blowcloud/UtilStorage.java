@@ -9,6 +9,9 @@ import android.util.Log;
 import java.util.HashMap;
 import java.util.List;
 
+/*
+WORKS ONLY ON api >= 30
+ */
 public class UtilStorage {
     private Context context;
     public HashMap<String,String> storageList;

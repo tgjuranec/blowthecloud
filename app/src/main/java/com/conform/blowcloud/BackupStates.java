@@ -3,6 +3,9 @@ package com.conform.blowcloud;
 public class BackupStates {
     public enum state{
         BACKUP_APPROVED,
+        BACKUP_APPROVED_DISSECT_DIR,
+        BACKUP_APPROVED_MEDIASTORE,
+        BACKUP_APPROVED_SAF,
         NO_DESTINATION,
         TWO_DESTINATIONS_POSSIBLE,
         DESTINATION_SPACE_NOT_SUFFICIENT,

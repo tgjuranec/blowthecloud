@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     DocsManager dmEmulated, dmRemovable;
     File [] removableFiles;
     File [] emulatedFiles;
-    StorageList sl;
+    StorageStat sl;
     Execution exe;
     String removableRoot;  //determines destination's root directory
     String [] mountedRemovables; // list of destination's root candidates (user selects if N>1)
@@ -66,8 +66,9 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     SelectDriveDialog selectDriveDialog;
     ThreadRunner runner;
     DissectDirRecursive ddrEmulated, ddrRemovable;
-    Context context;
+    Context context = this;
     UtilStorage utilStorage;
+    SAFRecursive saf;
 
     int REQUEST_CODE_OPEN_DESTINATION_DIRECTORY = 77;
     int REQUEST_CODE_OPEN_SOURCE_DIRECTORY = 777;
@@ -76,7 +77,6 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        context = this;
         bs = new BackupStates();
 
         exe = new Execution(this);
@@ -94,23 +94,27 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         dmRemovable = new DocsManager();
         dmEmulated.rootDir = emulated_dir.getPath();
 
-        //check number of mounted removables drives
-        utilStorage = new UtilStorage(this);
-        int nRemovablesMounted = utilStorage.storageList.size() - 1;
-        mountedRemovables = utilStorage.mountedRemovables;
-        if(nRemovablesMounted == 0){
-            bs.current = NO_DESTINATION;
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q){
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            startActivityForResult(intent, REQUEST_CODE_OPEN_SOURCE_DIRECTORY);
         }
-        else if (nRemovablesMounted >= 1){
-            String [] copyDriveList = new String[nRemovablesMounted+1];
-            for (int i = 0; i < nRemovablesMounted; i++){
-                copyDriveList[i] = mountedRemovables[i] + " \"" + utilStorage.storageList.get(mountedRemovables[i]) + "\"";
+        else {
+            //check number of mounted removables drives
+            utilStorage = new UtilStorage(this);
+            int nRemovablesMounted = utilStorage.storageList.size() - 1;
+            mountedRemovables = utilStorage.mountedRemovables;
+            if (nRemovablesMounted == 0) {
+                bs.current = NO_DESTINATION;
+            } else if (nRemovablesMounted >= 1) {
+                String[] copyDriveList = new String[nRemovablesMounted + 1];
+                for (int i = 0; i < nRemovablesMounted; i++) {
+                    copyDriveList[i] = mountedRemovables[i] + " \"" + utilStorage.storageList.get(mountedRemovables[i]) + "\"";
+                }
+                copyDriveList[nRemovablesMounted] = "Cancel";
+                selectDriveDialog = new SelectDriveDialog(this, this);
+                selectDriveDialog.show(copyDriveList);
             }
-            copyDriveList[nRemovablesMounted] = "Cancel";
-            selectDriveDialog = new SelectDriveDialog(this,this);
-            selectDriveDialog.show(copyDriveList);
         }
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
         }
@@ -128,8 +132,8 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        // Collecting data finished -> analyze data
                         AnalyzeAndReport();
+
                     }
                 });
             }
@@ -169,9 +173,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         });
     }
 
-    private void CollectData(){
-        runner.DissectDir();
-    }
+
     /*
     CALLBACK function after permission are processed (enabled or otherwise)
      */
@@ -287,13 +289,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             removableRoot = splitted[0];
             dmRemovable.rootDir = splitted[0];
             bs.current = BACKUP_APPROVED;
-            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q){
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-                startActivityForResult(intent, REQUEST_CODE_OPEN_SOURCE_DIRECTORY);
-            }
-            else  {
-                CollectData();
-            }
+            runner.collectData();
         }
     }
 
@@ -325,12 +321,18 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             }).start();
         }
 
-        public void DissectDir(){
+        public void collectData(){
             new Thread(() -> {
-                ddrEmulated = new DissectDirRecursive(emulated_dir.getAbsolutePath(), dmEmulated);
-                ddrRemovable = new DissectDirRecursive(removableRoot, dmRemovable);
-                Intent intent = new Intent("com.conform.ACTION_FINISH");
-                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q){
+                    saf = new SAFRecursive(context, sourceUri, destinationUri, dmEmulated, dmRemovable);
+                    removableRoot = dmRemovable.rootDir;
+                }
+                else {
+                    ddrEmulated = new DissectDirRecursive(emulated_dir.getAbsolutePath(), dmEmulated);
+                    ddrRemovable = new DissectDirRecursive(removableRoot, dmRemovable);
+                    Intent intent = new Intent("com.conform.ACTION_FINISH");
+                    LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                }
                 callback.AnalyzeData();
             }).start();
         }
@@ -369,8 +371,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             new Thread(()->{
                 if(sourceUri != null && destinationUri != null){
                     try {
-                        DocumentCopier documentCopier = new DocumentCopier(context, dmEmulated.rootDir, dmRemovable.rootDir, dmEmulated.fileList.size());
-                        documentCopier.copyDirectory(sourceUri, destinationUri);
+                        saf.copyDirectory();
                     }
                     catch (IOException e) {
                         e.printStackTrace();
@@ -388,7 +389,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     }
 
     private void AnalyzeAndReport(){
-        sl = new StorageList(removableRoot);
+        sl = new StorageStat(removableRoot);
         tvEmulatedFiles.setText(sl.emulatedReport);
         tvStoragelFiles.setText(sl.removableReport);
         String statusreport = "";
@@ -513,7 +514,13 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         }
         else if(requestCode == REQUEST_CODE_OPEN_DESTINATION_DIRECTORY && resultCode == RESULT_OK){
             destinationUri = data.getData();
-            CollectData();
+            if(sourceUri.getPath().equals(destinationUri.getPath())){
+                bs.current = NO_DESTINATION;
+            }
+            else{
+                bs.current = BACKUP_APPROVED;
+            }
+            runner.collectData();
         }
     }
 
