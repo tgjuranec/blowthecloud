@@ -15,7 +15,6 @@ import java.io.OutputStream;
 import java.util.Objects;
 
 class SAFRecursive {
-
     private Context context;
     private String emulatedRoot, removableRoot;
     public DocsManager dmEmulated, dmRemovable;
