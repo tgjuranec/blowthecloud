@@ -39,11 +39,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 // UI
-// DONETODO: CREATE PROGRESS BAR - CREATED NEW ACTIVITY THREADPROGRESS
+// DONE: CREATE PROGRESS BAR - CREATED NEW ACTIVITY THREADPROGRESS
 // TODO: ADD VISUAL PRESENTATION OF FILE SIZE AND FREE SPACE ON DRIVE
 // TODO: INCLUDE FAT32 (VFAT) FILE SIZE LIMITS OF
-// TODO: SOLVE THE PROBLEM OF NOT COPYING FROM XIAOMI - java.nio.file.AccessDeniedException: /storage/8F5B-16E9/DCIM/Camera/IMG_20230527_170223.jpg
-// TODO: CREATE SYSTEMATICALLY CALLS: MEDIASTORE, FILESYSTEM, SAF (DocumentFile)
+// DONE: SOLVE THE PROBLEM OF NOT COPYING FROM XIAOMI - java.nio.file.AccessDeniedException: /storage/8F5B-16E9/DCIM/Camera/IMG_20230527_170223.jpg
+// DONE: CREATE SYSTEMATICALLY CALLS: MEDIASTORE, FILESYSTEM, SAF (DocumentFile)
 
 
 
@@ -54,20 +54,17 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     ImageView imgEmulated, imgRemovable;
     Button btStart;
     DocsManager dmEmulated, dmRemovable;
-    File [] removableFiles;
-    File [] emulatedFiles;
     StorageStat sl;
-    Execution exe;
     String removableRoot;  //determines destination's root directory
     String [] mountedRemovables; // list of destination's root candidates (user selects if N>1)
     long filesToBackupSize = 0;
     List<String> fBackup;
     BackupStates bs;
-    int nFilesBackedUp = 0;
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     ThreadRunner runner;
     SelectBackupMethod selectBackupMethod;
-    DissectDirRecursive ddrEmulated, disDir;
+    SelectDriveDialog selectDriveDialog;
+    DissectDirRecursive disDir;
     Context context = this;
     UtilStorage utilStorage;
     SAFRecursive saf;
@@ -116,7 +113,6 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                     @Override
                     public void run() {
                         AnalyzeAndReport();
-
                     }
                 });
             }
@@ -126,16 +122,18 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-
+                        tvEmulatedFiles.setText("");
+                        tvStoragelFiles.setText("");
                         tvStatus.setText(R.string.strCopyingFinished);
-                        if(bs.current == BACKUP_APPROVED_SAF){
-                            tvStatus.append(" " + saf.fileCopied + "\n");
-                            tvStatus.append(" " + (saf.fileSizeTotalCopied / 1000000) + " MB");
-
+                        if(bs.current == BACKUP_APPROVED_SAF && saf != null){
+                            tvStatus.append(" " + saf.fileCopied + ",");
+                            tvStatus.append(" " + (saf.fileSizeTotalCopied / 1000000) + " MB\n");
+                            tvStatus.append("Skipped: " + saf.fileSkipped + saf.fileExcepted + "\n");
                         }
-                        else if (bs.current == BACKUP_APPROVED_DISSECT_DIR){
-                            tvStatus.append(" " + disDir.fileCopied + "\n");
-                            tvStatus.append(" " + (disDir.fileSizeTotalCopied / 1000000) + " MB");
+                        else if (bs.current == BACKUP_APPROVED_DISSECT_DIR && disDir != null){
+                            tvStatus.append(" " + disDir.fileCopied + ",");
+                            tvStatus.append("" + (disDir.fileSizeTotalCopied / 1000000) + " MB\n");
+                            tvStatus.append("Skipped: " + disDir.fileSkipped + "\n");
 
 
                         }
@@ -287,7 +285,6 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         else {
             removableRoot = splitted[0];
             dmRemovable.rootDir = splitted[0];
-            bs.current = BACKUP_APPROVED_DISSECT_DIR;
             runner.collectData();
         }
     }
@@ -304,6 +301,23 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         }
         else if (method.equals("File method")){
             bs.current = BACKUP_APPROVED_DISSECT_DIR;
+            //check number of mounted removables drives
+            utilStorage = new UtilStorage(this);
+            int nRemovablesMounted = utilStorage.storageList.size() - 1;
+            mountedRemovables = utilStorage.mountedRemovables;
+            if (nRemovablesMounted == 0) {
+                bs.current = NO_DESTINATION;
+            } else if (nRemovablesMounted >= 1) {
+                String[] copyDriveList = new String[nRemovablesMounted + 1];
+                for (int i = 0; i < nRemovablesMounted; i++) {
+                    copyDriveList[i] = mountedRemovables[i] + " \"" + utilStorage.storageList.get(mountedRemovables[i]) + "\"";
+                }
+                copyDriveList[nRemovablesMounted] = "Cancel";
+                selectDriveDialog = new SelectDriveDialog(this, this);
+                selectDriveDialog.show(copyDriveList);
+            }
+            return;
+
         }
         else if (method.equals("MediaStore method")){
             bs.current = BACKUP_APPROVED_MEDIASTORE;
@@ -348,7 +362,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                 }
                 else if (bs.current == BACKUP_APPROVED_DISSECT_DIR){
                     dmEmulated.rootDir = emulated_dir.getAbsolutePath();
-                    removableRoot = dmRemovable.rootDir;
+                    dmRemovable.rootDir = removableRoot;
                     disDir = new DissectDirRecursive(context,sourceUri, destinationUri,dmEmulated, dmRemovable);
                 }
                 else if (bs.current == BACKUP_APPROVED_MEDIASTORE){
@@ -397,7 +411,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         tvStoragelFiles.setText(sl.removableReport);
         String statusreport = "";
         int iEmulatedDiameter, iRemovableDiameter;
-        if(bs.current == BACKUP_APPROVED) {
+        if(bs.current == BACKUP_APPROVED || bs.current == BACKUP_APPROVED_SAF || bs.current == BACKUP_APPROVED_DISSECT_DIR) {
             fBackup = FilesToBackup(dmEmulated, dmRemovable);
              statusreport = "Files to backup: " + fBackup.size() + "\n" +
                     "Backup File Size : " + filesToBackupSize / 1000000 + " MB\n";

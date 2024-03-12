@@ -31,10 +31,12 @@ public class DissectDirRecursive {
         progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
         context.startActivity(progressActivity);
         this.emulatedRoot = Environment.getExternalStorageDirectory().getAbsolutePath();
-        this.removableRoot = removable.getPath().replace("tree","storage").replace(":","");
+        if(removable != null) {
+            this.removableRoot = removable.getPath().replace("tree","storage").replace(":","");
+            dmRemovable.rootDir = this.removableRoot;
+        }
         this.dmEmulated = dmEmulated;
         this.dmRemovable = dmRemovable;
-        dmRemovable.rootDir = this.removableRoot;
         DissectDirIterative(dmEmulated.rootDir, dmEmulated);
         DissectDirIterative(dmRemovable.rootDir, dmRemovable);
         Intent intent = new Intent("com.conform.ACTION_FINISH");
@@ -104,7 +106,7 @@ public class DissectDirRecursive {
         int i = 0;
         final long step = nRequestedFilesToBackup / 100;
         Intent progressActivity = new Intent(context, ThreadProgressActivity.class);
-        progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
+        progressActivity.putExtra("Title", "Copying Data. Please Wait...");
         context.startActivity(progressActivity);
         for (String f : dmEmulated.fileList.keySet()) {
             i++;
