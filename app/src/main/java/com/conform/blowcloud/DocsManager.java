@@ -19,7 +19,7 @@ public class DocsManager {
     int doubleCount = 0;
     static int fileCount = 0;
     public long TotalFileSize = 0;
-    String rootDir = null;
+    public String rootDir = null;
 
     public DocsManager(){
         fileList = new HashMap<String,Long>();

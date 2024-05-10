@@ -1,14 +1,5 @@
 package com.conform.blowcloud;
 
-import static com.conform.blowcloud.BackupStates.state.BACKUP_APPROVED;
-import static com.conform.blowcloud.BackupStates.state.BACKUP_APPROVED_DISSECT_DIR;
-import static com.conform.blowcloud.BackupStates.state.BACKUP_APPROVED_MEDIASTORE;
-import static com.conform.blowcloud.BackupStates.state.BACKUP_APPROVED_SAF;
-import static com.conform.blowcloud.BackupStates.state.BACKUP_CANCELED;
-import static com.conform.blowcloud.BackupStates.state.DESTINATION_SPACE_NOT_SUFFICIENT;
-import static com.conform.blowcloud.BackupStates.state.NO_DESTINATION;
-import static com.conform.blowcloud.BackupStates.state.NO_FILES_FOR_BACKUP;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -21,7 +12,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -32,6 +22,13 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.conform.blowcloud.dialogs.SelectBackupMethod;
+import com.conform.blowcloud.dialogs.SelectDriveDialog;
+import com.conform.blowcloud.recursivemethods.DissectDirRecursive;
+import com.conform.blowcloud.recursivemethods.SAFRecursive;
+import com.conform.blowcloud.utility.UtilFunc;
+import com.conform.blowcloud.utility.UtilStorage;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,7 +56,6 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     String [] mountedRemovables; // list of destination's root candidates (user selects if N>1)
     long filesToBackupSize = 0;
     List<String> fBackup;
-    BackupStates bs;
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     ThreadRunner runner;
     SelectBackupMethod selectBackupMethod;
@@ -76,7 +72,6 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        bs = new BackupStates();
 
         tvEmulatedFiles = findViewById(R.id.txtEmulatedFiles);
         tvStoragelFiles = findViewById(R.id.txtStorageFiles);
@@ -125,19 +120,19 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
                         tvEmulatedFiles.setText("");
                         tvStoragelFiles.setText("");
                         tvStatus.setText(R.string.strCopyingFinished);
-                        if(bs.current == BACKUP_APPROVED_SAF && saf != null){
+                        if(current == state.BACKUP_APPROVED_SAF && saf != null){
                             tvStatus.append(" " + saf.fileCopied + ",");
                             tvStatus.append(" " + (saf.fileSizeTotalCopied / 1000000) + " MB\n");
                             tvStatus.append("Skipped: " + saf.fileSkipped + saf.fileExcepted + "\n");
                         }
-                        else if (bs.current == BACKUP_APPROVED_DISSECT_DIR && disDir != null){
+                        else if (current == state.BACKUP_APPROVED_DISSECT_DIR && disDir != null){
                             tvStatus.append(" " + disDir.fileCopied + ",");
                             tvStatus.append("" + (disDir.fileSizeTotalCopied / 1000000) + " MB\n");
                             tvStatus.append("Skipped: " + disDir.fileSkipped + "\n");
 
 
                         }
-                        else if (bs.current == BACKUP_APPROVED_MEDIASTORE){
+                        else if (current == state.BACKUP_APPROVED_MEDIASTORE){
 
                         }
                         else {
@@ -154,13 +149,13 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         btStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(bs.current == BACKUP_APPROVED_SAF){
+                if(current == state.BACKUP_APPROVED_SAF){
                     runner.copyFilesUri();
                 }
-                else if (bs.current == BACKUP_APPROVED_DISSECT_DIR){
+                else if (current == state.BACKUP_APPROVED_DISSECT_DIR){
                     runner.copyFiles();
                 }
-                else if (bs.current == BACKUP_APPROVED_MEDIASTORE){
+                else if (current == state.BACKUP_APPROVED_MEDIASTORE){
 
                 }
                 else {
@@ -189,72 +184,6 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     }
 
 
-    private void DissectMediaStore(){
-        final Uri Mediastore_select = MediaStore.Files.getContentUri("external");
-        boolean progressActivityStarted = false;
-        // Create a projection - the specific columns we want to return
-        // SELECT COLUMN
-
-        String[] projection = { MediaStore.Images.Media._ID,
-                                MediaStore.Images.Media.DISPLAY_NAME,
-                                MediaStore.Images.Media.DATA};
-        // FILTER ROWS
-        String filter = MediaStore.Images.Media.DATA + " LIKE ?";
-        String [] filterArg = {"%emulated%"};
-        // Create a cursor pointing to the SDCard
-        Cursor cursor = getContentResolver().query(Mediastore_select,
-                projection, // Which columns to return
-                null,       // Return all rows
-                null,       // Return all rows
-                null);      // Default sort order
-
-        int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
-        int columndata = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-        int stepProgress = 0;
-        // Use the cursor to get the image IDs
-        if(cursor.moveToLast()) {
-            int nExeCopyFiles = cursor.getPosition();
-            if(nExeCopyFiles > 1000){
-                Intent progressActivity = new Intent(MainActivity.this, ThreadProgressActivity.class);
-                progressActivity.putExtra("Title", "Collecting and Analyzing Data...");
-                startActivity(progressActivity);
-                progressActivityStarted = true;
-            }
-            stepProgress = nExeCopyFiles /100;
-            int cExeCopyFile = 0;
-
-            cursor.moveToFirst();
-            while (cursor.moveToNext()) {
-                int id = cursor.getInt(columnIndex);
-                String d = cursor.getString(columndata);
-
-                if(d.contains(emulated_dir.toString())){
-                    dmEmulated.addfile(d);
-                }
-                else if (dmRemovable.rootDir != null && d.contains(dmRemovable.rootDir)){
-                    dmRemovable.addfile(d);
-                }
-                else{
-                    //ERROR
-                }
-                cExeCopyFile++;
-                //  UPDATE PROGRESS
-                if(progressActivityStarted == true && cExeCopyFile % stepProgress == 0){
-                    Intent intent = new Intent("com.conform.ACTION_UPDATE_PROGRESS");
-                    int progress = 100* cExeCopyFile / nExeCopyFiles;
-                    intent.putExtra("Progress", progress);
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-                }
-            }
-        }
-        cursor.close();
-        if(progressActivityStarted == true){
-            // STOP PROGRESS BAR ACTIVITY
-            Intent intent = new Intent("com.conform.ACTION_FINISH");
-            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
-        }
-    }
-
 
 
     private void printStrings(String [] strList, TextView tv){
@@ -279,7 +208,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     public void onDriveSelected(String driveRoot) {
         String [] splitted = driveRoot.split(" ");
         if(driveRoot.equals("Cancel")) {
-            bs.current = BACKUP_CANCELED;
+            current = state.BACKUP_CANCELED;
             AnalyzeAndReport();
         }
         else {
@@ -294,19 +223,19 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
     @Override
     public void onSelectBackupMethod(String method) {
         if(method.equals("Cancel Backup")){
-            bs.current = BACKUP_CANCELED;
+            current = state.BACKUP_CANCELED;
         }
         else if (method.equals("SAF method")){
-            bs.current = BACKUP_APPROVED_SAF;
+            current = state.BACKUP_APPROVED_SAF;
         }
         else if (method.equals("File method")){
-            bs.current = BACKUP_APPROVED_DISSECT_DIR;
+            current = state.BACKUP_APPROVED_DISSECT_DIR;
             //check number of mounted removables drives
             utilStorage = new UtilStorage(this);
             int nRemovablesMounted = utilStorage.storageList.size() - 1;
             mountedRemovables = utilStorage.mountedRemovables;
             if (nRemovablesMounted == 0) {
-                bs.current = NO_DESTINATION;
+                current = state.NO_DESTINATION;
             } else if (nRemovablesMounted >= 1) {
                 String[] copyDriveList = new String[nRemovablesMounted + 1];
                 for (int i = 0; i < nRemovablesMounted; i++) {
@@ -320,7 +249,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
 
         }
         else if (method.equals("MediaStore method")){
-            bs.current = BACKUP_APPROVED_MEDIASTORE;
+            current = state.BACKUP_APPROVED_MEDIASTORE;
         }
         else {
 
@@ -345,27 +274,22 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
             this.callback = callback;
         }
 
-        public void getMediastoreData() {
-            new Thread(() -> {
-                // Perform your thread operations here
-                DissectMediaStore();
-                // Once the thread is done, call the callback
-                callback.AnalyzeData();
-            }).start();
-        }
 
         public void collectData(){
             new Thread(() -> {
-                if (bs.current == BACKUP_APPROVED_SAF){
+                if (current == state.BACKUP_APPROVED_SAF){
                     saf = new SAFRecursive(context, sourceUri, destinationUri, dmEmulated, dmRemovable);
+                    // dmRemovable is defined by Uri and after processing
                     removableRoot = dmRemovable.rootDir;
                 }
-                else if (bs.current == BACKUP_APPROVED_DISSECT_DIR){
+                else if (current == state.BACKUP_APPROVED_DISSECT_DIR){
                     dmEmulated.rootDir = emulated_dir.getAbsolutePath();
                     dmRemovable.rootDir = removableRoot;
                     disDir = new DissectDirRecursive(context,sourceUri, destinationUri,dmEmulated, dmRemovable);
                 }
-                else if (bs.current == BACKUP_APPROVED_MEDIASTORE){
+                else if (current == state.BACKUP_APPROVED_MEDIASTORE){
+                    dmEmulated.rootDir = emulated_dir.getAbsolutePath();
+                    dmRemovable.rootDir = removableRoot;
 
                 }
                 else{
@@ -399,7 +323,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         }
         public void CancelTask(){
             new Thread(() ->{
-                bs.current = BACKUP_CANCELED;
+                current = state.BACKUP_CANCELED;
                 callback.AnalyzeData();
             }).start();
         }
@@ -411,14 +335,14 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         tvStoragelFiles.setText(sl.removableReport);
         String statusreport = "";
         int iEmulatedDiameter, iRemovableDiameter;
-        if(bs.current == BACKUP_APPROVED || bs.current == BACKUP_APPROVED_SAF || bs.current == BACKUP_APPROVED_DISSECT_DIR) {
+        if(current == state.BACKUP_APPROVED || current == state.BACKUP_APPROVED_SAF || current == state.BACKUP_APPROVED_DISSECT_DIR) {
             fBackup = FilesToBackup(dmEmulated, dmRemovable);
              statusreport = "Files to backup: " + fBackup.size() + "\n" +
                     "Backup File Size : " + filesToBackupSize / 1000000 + " MB\n";
             if (fBackup.size() == 0) {
-                bs.current = NO_FILES_FOR_BACKUP;
+                current = state.NO_FILES_FOR_BACKUP;
             } else if ((filesToBackupSize + 10000000) > sl.removableAvailable) {
-                bs.current = DESTINATION_SPACE_NOT_SUFFICIENT;
+                current = state.DESTINATION_SPACE_NOT_SUFFICIENT;
             }
             // SET SIZE OF CIRCLES
             if (filesToBackupSize > 0) {
@@ -463,7 +387,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         imgRemovable.setLayoutParams(removableParams);
 
 
-        switch(bs.current){
+        switch(current){
             case BACKUP_APPROVED:
                 tvStatus.setText(R.string.strStateBackupApproved);
                 break;
@@ -542,7 +466,7 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
         else if(requestCode == REQUEST_CODE_OPEN_DESTINATION_DIRECTORY && resultCode == RESULT_OK){
             destinationUri = data.getData();
             if(sourceUri.getPath().equals(destinationUri.getPath())){
-                bs.current = NO_DESTINATION;
+                current = state.NO_FILES_FOR_BACKUP;
             }
             else{
 
@@ -553,5 +477,20 @@ public class MainActivity extends AppCompatActivity implements SelectDriveDialog
 
         }
     }
+
+    public enum state{
+        BACKUP_APPROVED,
+        BACKUP_APPROVED_DISSECT_DIR,
+        BACKUP_APPROVED_MEDIASTORE,
+        BACKUP_APPROVED_SAF,
+        NO_DESTINATION,
+        TWO_DESTINATIONS_POSSIBLE,
+        DESTINATION_SPACE_NOT_SUFFICIENT,
+        NO_FILES_FOR_BACKUP,
+        SUSPICIOUS_SYSTEM_STATE,
+        BACKUP_CANCELED,
+    };
+
+    public state current = state.NO_FILES_FOR_BACKUP;
 
 }

@@ -1,10 +1,11 @@
-package com.conform.blowcloud;
+package com.conform.blowcloud.utility;
 
 import android.content.Context;
 import android.os.Build;
 import android.os.storage.StorageManager;
 import android.os.storage.StorageVolume;
-import android.util.Log;
+
+import com.conform.blowcloud.utility.UtilFunc;
 
 import java.util.HashMap;
 import java.util.List;

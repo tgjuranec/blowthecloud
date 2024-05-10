@@ -12,6 +12,9 @@ import android.os.Bundle;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.conform.blowcloud.MainActivity;
+import com.conform.blowcloud.R;
+
 
 public class ThreadProgressActivity extends AppCompatActivity {
     public ProgressBar pbStatus;

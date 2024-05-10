@@ -1,4 +1,4 @@
-package com.conform.blowcloud;
+package com.conform.blowcloud.dialogs;
 
 import android.content.Context;
 import android.content.DialogInterface;
@@ -27,7 +27,7 @@ public class SelectDriveDialog {
     public OnDriveSelectedListener listener;
     private String TAG = "SelectDriveDialog";
 
-    SelectDriveDialog(Context c, OnDriveSelectedListener listener){
+    public SelectDriveDialog(Context c, OnDriveSelectedListener listener){
         this.listener = listener;
         this.context = c;
     }

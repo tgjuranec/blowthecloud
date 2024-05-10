@@ -1,4 +1,4 @@
-package com.conform.blowcloud;
+package com.conform.blowcloud.recursivemethods;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -8,13 +8,16 @@ import android.util.Log;
 import androidx.documentfile.provider.DocumentFile;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.conform.blowcloud.DocsManager;
+import com.conform.blowcloud.ThreadProgressActivity;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Objects;
 
-class SAFRecursive {
+public class SAFRecursive {
     private Context context;
     private String emulatedRoot, removableRoot;
     public DocsManager dmEmulated, dmRemovable;

@@ -1,4 +1,4 @@
-package com.conform.blowcloud;
+package com.conform.blowcloud.recursivemethods;
 
 import android.content.Context;
 import android.content.Intent;
@@ -8,8 +8,12 @@ import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.conform.blowcloud.DocsManager;
+import com.conform.blowcloud.utility.Execution;
+import com.conform.blowcloud.ThreadProgressActivity;
+import com.conform.blowcloud.utility.UtilFunc;
+
 import java.io.File;
-import java.util.List;
 import java.util.Stack;
 
 public class DissectDirRecursive {
@@ -24,7 +28,7 @@ public class DissectDirRecursive {
     public long nRequestedFilesToBackup=0;
     public long nSkippedFilesToBackup = 0;
     public long progressStep=0;
-    private List<String> bigPaths;
+
     public DissectDirRecursive(Context context, Uri emulated, Uri removable, DocsManager dmEmulated, DocsManager dmRemovable){
         this.context = context;
         Intent progressActivity = new Intent(context, ThreadProgressActivity.class);
@@ -60,14 +64,7 @@ public class DissectDirRecursive {
             }
         }
         deeplevel--;
-        if(deeplevel == 0){
-            for(String bigDir: bigPaths){
-                DissectDir(bigDir,dm);
-                bigPaths.remove(bigDir);
-            }
-
-        }
-    }
+     }
 
     private void DissectDirIterative(String dir, DocsManager dm){
         Stack<File> stack = new Stack<>();
@@ -137,7 +134,6 @@ public class DissectDirRecursive {
                 ls = dir.listFiles();
             }
             catch (StackOverflowError err){
-                bigPaths.add(dir.getPath());
             }
         }
         return ls;

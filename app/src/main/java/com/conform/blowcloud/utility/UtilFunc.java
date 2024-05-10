@@ -1,4 +1,4 @@
-package com.conform.blowcloud;
+package com.conform.blowcloud.utility;
 
 import android.util.Log;
 
@@ -140,7 +140,6 @@ public class UtilFunc {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        Log.d("UtilStorage", output);
         return output;
     }
 

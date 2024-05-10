@@ -1,4 +1,4 @@
-package com.conform.blowcloud;
+package com.conform.blowcloud.dialogs;
 
 import android.content.Context;
 import android.content.DialogInterface;
@@ -17,7 +17,7 @@ public class SelectBackupMethod {
     public onSelectBackupMethodListener listener;
     private String TAG = "SelectBackupMethod";
 
-    SelectBackupMethod(Context c, onSelectBackupMethodListener listener){
+    public SelectBackupMethod(Context c, onSelectBackupMethodListener listener){
         this.context = c;
         this.listener = listener;
 
